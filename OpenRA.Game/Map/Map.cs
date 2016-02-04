@@ -16,7 +16,6 @@ using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 using OpenRA.FileSystem;
-using OpenRA.GameRules;
 using OpenRA.Graphics;
 using OpenRA.Network;
 using OpenRA.Support;
@@ -157,7 +156,7 @@ namespace OpenRA
 		[FieldLoader.Ignore] public readonly WVec[] SubCellOffsets;
 		public readonly SubCell DefaultSubCell;
 		public readonly SubCell LastSubCell;
-		[FieldLoader.Ignore] public IFolder Container;
+		[FieldLoader.Ignore] public IReadWritePackage Container;
 		public string Path { get; private set; }
 
 		// Yaml map data
@@ -264,7 +263,7 @@ namespace OpenRA
 
 		void AssertExists(string filename)
 		{
-			using (var s = Container.GetContent(filename))
+			using (var s = Container.GetStream(filename))
 				if (s == null)
 					throw new InvalidOperationException("Required file {0} not present in this map".F(filename));
 		}
@@ -277,7 +276,7 @@ namespace OpenRA
 		{
 			var size = new Size(width, height);
 			Grid = Game.ModData.Manifest.Get<MapGrid>();
-			var tileRef = new TerrainTile(tileset.Templates.First().Key, (byte)0);
+			var tileRef = new TerrainTile(tileset.Templates.First().Key, 0);
 
 			Title = "Name your map here";
 			Description = "Describe your map here";
@@ -317,12 +316,12 @@ namespace OpenRA
 		public Map(string path)
 		{
 			Path = path;
-			Container = Game.ModData.ModFiles.OpenPackage(path, null, int.MaxValue);
+			Container = Game.ModData.ModFiles.OpenWritablePackage(path);
 
 			AssertExists("map.yaml");
 			AssertExists("map.bin");
 
-			var yaml = new MiniYaml(null, MiniYaml.FromStream(Container.GetContent("map.yaml"), path));
+			var yaml = new MiniYaml(null, MiniYaml.FromStream(Container.GetStream("map.yaml"), path));
 			FieldLoader.Load(this, yaml);
 
 			// Support for formats 1-3 dropped 2011-02-11.
@@ -428,8 +427,8 @@ namespace OpenRA
 			LastSubCell = (SubCell)(SubCellOffsets.Length - 1);
 			DefaultSubCell = (SubCell)Grid.SubCellDefaultIndex;
 
-			if (Container.Exists("map.png"))
-				using (var dataStream = Container.GetContent("map.png"))
+			if (Container.Contains("map.png"))
+				using (var dataStream = Container.GetStream("map.png"))
 					CustomPreview = new Bitmap(dataStream);
 
 			PostInit();
@@ -604,7 +603,7 @@ namespace OpenRA
 
 			foreach (var field in fields)
 			{
-				var f = this.GetType().GetField(field);
+				var f = GetType().GetField(field);
 				if (f.GetValue(this) == null)
 					continue;
 				root.Add(new MiniYamlNode(field, FieldSaver.FormatValue(this, f)));
@@ -635,12 +634,12 @@ namespace OpenRA
 			// Add any custom assets
 			if (Container != null)
 			{
-				foreach (var file in Container.AllFileNames())
+				foreach (var file in Container.Contents)
 				{
 					if (file == "map.bin" || file == "map.yaml")
 						continue;
 
-					entries.Add(file, Container.GetContent(file).ReadAllBytes());
+					entries.Add(file, Container.GetStream(file).ReadAllBytes());
 				}
 			}
 
@@ -650,7 +649,7 @@ namespace OpenRA
 				Path = toPath;
 
 				// Create a new map package
-				Container = Game.ModData.ModFiles.CreatePackage(Path, int.MaxValue, entries);
+				Container = Game.ModData.ModFiles.CreatePackage(Path, entries);
 			}
 
 			// Update existing package
@@ -663,7 +662,7 @@ namespace OpenRA
 		public CellLayer<TerrainTile> LoadMapTiles()
 		{
 			var tiles = new CellLayer<TerrainTile>(this);
-			using (var s = Container.GetContent("map.bin"))
+			using (var s = Container.GetStream("map.bin"))
 			{
 				var header = new BinaryDataHeader(s, MapSize);
 				if (header.TilesOffset > 0)
@@ -695,7 +694,7 @@ namespace OpenRA
 		public CellLayer<byte> LoadMapHeight()
 		{
 			var tiles = new CellLayer<byte>(this);
-			using (var s = Container.GetContent("map.bin"))
+			using (var s = Container.GetStream("map.bin"))
 			{
 				var header = new BinaryDataHeader(s, MapSize);
 				if (header.HeightsOffset > 0)
@@ -717,7 +716,7 @@ namespace OpenRA
 		{
 			var resources = new CellLayer<ResourceTile>(this);
 
-			using (var s = Container.GetContent("map.bin"))
+			using (var s = Container.GetStream("map.bin"))
 			{
 				var header = new BinaryDataHeader(s, MapSize);
 				if (header.ResourcesOffset > 0)
@@ -915,7 +914,11 @@ namespace OpenRA
 
 		public int FacingBetween(CPos cell, CPos towards, int fallbackfacing)
 		{
-			return Traits.Util.GetFacing(CenterOfCell(towards) - CenterOfCell(cell), fallbackfacing);
+			var delta = CenterOfCell(towards) - CenterOfCell(cell);
+			if (delta.HorizontalLengthSquared == 0)
+				return fallbackfacing;
+
+			return delta.Yaw.Facing;
 		}
 
 		public void Resize(int width, int height)		// editor magic.
@@ -965,9 +968,9 @@ namespace OpenRA
 			using (var ms = new MemoryStream())
 			{
 				// Read the relevant data into the buffer
-				using (var s = Container.GetContent("map.yaml"))
+				using (var s = Container.GetStream("map.yaml"))
 					s.CopyTo(ms);
-				using (var s = Container.GetContent("map.bin"))
+				using (var s = Container.GetStream("map.bin"))
 					s.CopyTo(ms);
 
 				// Take the SHA1

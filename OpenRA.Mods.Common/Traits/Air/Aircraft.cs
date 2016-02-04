@@ -169,13 +169,11 @@ namespace OpenRA.Mods.Common.Traits
 		public void Repulse()
 		{
 			var repulsionForce = GetRepulsionForce();
-
-			var repulsionFacing = Util.GetFacing(repulsionForce, -1);
-			if (repulsionFacing == -1)
+			if (repulsionForce.HorizontalLengthSquared == 0)
 				return;
 
 			var speed = Info.RepulsionSpeed != -1 ? Info.RepulsionSpeed : MovementSpeed;
-			SetPosition(self, CenterPosition + FlyStep(speed, repulsionFacing));
+			SetPosition(self, CenterPosition + FlyStep(speed, repulsionForce.Yaw.Facing));
 		}
 
 		public virtual WVec GetRepulsionForce()
@@ -426,7 +424,7 @@ namespace OpenRA.Mods.Common.Traits
 			if (IsPlane)
 				return new Fly(self, target, WDist.FromCells(3), WDist.FromCells(5));
 
-			return Util.SequenceActivities(new HeliFly(self, target), new Turn(self, Info.InitialFacing));
+			return ActivityUtils.SequenceActivities(new HeliFly(self, target), new Turn(self, Info.InitialFacing));
 		}
 
 		public Activity MoveIntoTarget(Actor self, Target target)
@@ -441,11 +439,11 @@ namespace OpenRA.Mods.Common.Traits
 		{
 			// TODO: Ignore repulsion when moving
 			if (IsPlane)
-				return Util.SequenceActivities(
+				return ActivityUtils.SequenceActivities(
 					new CallFunc(() => SetVisualPosition(self, fromPos)),
 					new Fly(self, Target.FromPos(toPos)));
 
-			return Util.SequenceActivities(new CallFunc(() => SetVisualPosition(self, fromPos)),
+			return ActivityUtils.SequenceActivities(new CallFunc(() => SetVisualPosition(self, fromPos)),
 				new HeliFly(self, Target.FromPos(toPos)));
 		}
 
@@ -540,7 +538,7 @@ namespace OpenRA.Mods.Common.Traits
 
 					if (IsPlane)
 					{
-						self.QueueActivity(order.Queued, Util.SequenceActivities(
+						self.QueueActivity(order.Queued, ActivityUtils.SequenceActivities(
 							new ReturnToBase(self, order.TargetActor),
 							new ResupplyAircraft(self)));
 					}

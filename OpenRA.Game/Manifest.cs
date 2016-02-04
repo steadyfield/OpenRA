@@ -29,19 +29,18 @@ namespace OpenRA
 		}
 	}
 
-	// Describes what is to be loaded in order to run a mod
+	/// <summary> Describes what is to be loaded in order to run a mod. </summary>
 	public class Manifest
 	{
 		public static readonly Dictionary<string, Manifest> AllMods = LoadMods();
 
 		public readonly ModMetadata Mod;
 		public readonly string[]
-			Folders, Rules, ServerTraits,
+			Packages, Rules, ServerTraits,
 			Sequences, VoxelSequences, Cursors, Chrome, Assemblies, ChromeLayout,
 			Weapons, Voices, Notifications, Music, Translations, TileSets,
 			ChromeMetrics, MapCompatibility, Missions;
 
-		public readonly IReadOnlyDictionary<string, string> Packages;
 		public readonly IReadOnlyDictionary<string, string> MapFolders;
 		public readonly MiniYaml LoadScreen;
 		public readonly MiniYaml LobbyDefaults;
@@ -61,18 +60,20 @@ namespace OpenRA
 		readonly TypeDictionary modules = new TypeDictionary();
 		readonly Dictionary<string, MiniYaml> yaml;
 
-		public Manifest(string mod)
+		public Manifest(string modId, string modPath = null)
 		{
-			var path = Platform.ResolvePath(".", "mods", mod, "mod.yaml");
+			if (modPath == null)
+				modPath = ModMetadata.CandidateModPaths[modId];
+
+			var path = Path.Combine(modPath, "mod.yaml");
 			yaml = new MiniYaml(null, MiniYaml.FromFile(path)).ToDictionary();
 
 			Mod = FieldLoader.Load<ModMetadata>(yaml["Metadata"]);
-			Mod.Id = mod;
+			Mod.Id = modId;
 
 			// TODO: Use fieldloader
-			Folders = YamlList(yaml, "Folders", true);
 			MapFolders = YamlDictionary(yaml, "MapFolders", true);
-			Packages = YamlDictionary(yaml, "Packages", true);
+			Packages = YamlList(yaml, "Packages", true);
 			Rules = YamlList(yaml, "Rules", true);
 			Sequences = YamlList(yaml, "Sequences", true);
 			VoxelSequences = YamlList(yaml, "VoxelSequences", true);
@@ -106,12 +107,10 @@ namespace OpenRA
 			RequiresMods = yaml["RequiresMods"].ToDictionary(my => my.Value);
 
 			// Allow inherited mods to import parent maps.
-			var compat = new List<string>();
-			compat.Add(mod);
+			var compat = new List<string> { Mod.Id };
 
 			if (yaml.ContainsKey("SupportsMapsFrom"))
-				foreach (var c in yaml["SupportsMapsFrom"].Value.Split(','))
-					compat.Add(c.Trim());
+				compat.AddRange(yaml["SupportsMapsFrom"].Value.Split(',').Select(c => c.Trim()));
 
 			MapCompatibility = compat.ToArray();
 
@@ -156,8 +155,10 @@ namespace OpenRA
 			if (!yaml.ContainsKey(key))
 				return new string[] { };
 
-			var list = yaml[key].ToDictionary().Keys.ToArray();
-			return parsePaths ? list.Select(Platform.ResolvePath).ToArray() : list;
+			if (parsePaths)
+				return yaml[key].Nodes.Select(node => Platform.ResolvePath(node.Key, node.Value.Value ?? string.Empty)).ToArray();
+
+			return yaml[key].ToDictionary().Keys.ToArray();
 		}
 
 		static IReadOnlyDictionary<string, string> YamlDictionary(Dictionary<string, MiniYaml> yaml, string key, bool parsePaths = false)
@@ -168,15 +169,19 @@ namespace OpenRA
 			var inner = new Dictionary<string, string>();
 			foreach (var node in yaml[key].Nodes)
 			{
+				var line = node.Key;
+				if (node.Value.Value != null)
+					line += ":" + node.Value.Value;
+
 				// '@' may be used in mod.yaml to indicate extra information (similar to trait @ tags).
 				// Applies to MapFolders (to indicate System and User directories) and Packages (to indicate package annotation).
-				if (node.Key.Contains('@'))
+				if (line.Contains('@'))
 				{
-					var split = node.Key.Split('@');
-					inner.Add(split[0], split[1]);
+					var split = line.Split('@');
+					inner.Add(parsePaths ? Platform.ResolvePath(split[0]) : split[0], split[1]);
 				}
 				else
-					inner.Add(node.Key, null);
+					inner.Add(line, null);
 			}
 
 			return new ReadOnlyDictionary<string, string>(inner);
@@ -198,20 +203,16 @@ namespace OpenRA
 
 		static Dictionary<string, Manifest> LoadMods()
 		{
-			var basePath = Platform.ResolvePath(".", "mods");
-			var mods = Directory.GetDirectories(basePath)
-				.Select(x => x.Substring(basePath.Length + 1));
-
 			var ret = new Dictionary<string, Manifest>();
-			foreach (var mod in mods)
+			foreach (var mod in ModMetadata.CandidateModPaths)
 			{
-				if (!File.Exists(Platform.ResolvePath(".", "mods", mod, "mod.yaml")))
+				if (!File.Exists(Path.Combine(mod.Value, "mod.yaml")))
 					continue;
 
 				try
 				{
-					var manifest = new Manifest(mod);
-					ret.Add(mod, manifest);
+					var manifest = new Manifest(mod.Key, mod.Value);
+					ret.Add(mod.Key, manifest);
 				}
 				catch (Exception ex)
 				{

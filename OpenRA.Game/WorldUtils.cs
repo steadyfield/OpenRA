@@ -12,7 +12,6 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using OpenRA.GameRules;
 using OpenRA.Support;
 using OpenRA.Traits;
 
@@ -36,6 +35,23 @@ namespace OpenRA
 			var vec = new WVec(r, r, WDist.Zero);
 			return world.ActorMap.ActorsInBox(origin - vec, origin + vec).Where(
 				a => (a.CenterPosition - origin).HorizontalLengthSquared <= r.LengthSquared);
+		}
+
+		public static bool ContainsTemporaryBlocker(this World world, CPos cell, Actor ignoreActor = null)
+		{
+			var temporaryBlockers = world.ActorMap.GetActorsAt(cell);
+			foreach (var temporaryBlocker in temporaryBlockers)
+			{
+				if (temporaryBlocker == ignoreActor)
+					continue;
+
+				var temporaryBlockerTraits = temporaryBlocker.TraitsImplementing<ITemporaryBlocker>();
+				foreach (var temporaryBlockerTrait in temporaryBlockerTraits)
+					if (temporaryBlockerTrait.IsBlocking(temporaryBlocker, cell))
+						return true;
+			}
+
+			return false;
 		}
 
 		public static void DoTimed<T>(this IEnumerable<T> e, Action<T> a, string text)

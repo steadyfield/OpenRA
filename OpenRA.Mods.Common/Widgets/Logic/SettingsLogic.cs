@@ -73,12 +73,12 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 					OriginalGraphicsWindowedSize != current.Graphics.WindowedSize ||
 					OriginalGraphicsFullscreenSize != current.Graphics.FullscreenSize)
 					ConfirmationDialogs.PromptConfirmAction(
-						"Restart Now?",
-						"Some changes will not be applied until\nthe game is restarted. Restart now?",
-						Game.Restart,
-						closeAndExit,
-						"Restart Now",
-						"Restart Later");
+						title: "Restart Now?",
+						text: "Some changes will not be applied until\nthe game is restarted. Restart now?",
+						onConfirm: Game.Restart,
+						onCancel: closeAndExit,
+						confirmText: "Restart Now",
+						cancelText: "Restart Later");
 				else
 					closeAndExit();
 			};
@@ -154,7 +154,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			BindCheckboxPref(panel, "FRAME_LIMIT_CHECKBOX", ds, "CapFramerate");
 			BindCheckboxPref(panel, "SHOW_SHELLMAP", gs, "ShowShellmap");
 			BindCheckboxPref(panel, "DISPLAY_TARGET_LINES_CHECKBOX", gs, "DrawTargetLine");
-			BindCheckboxPref(panel, "TEAM_HEALTH_COLORS_CHECKBOX", gs, "TeamHealthColors");
+			BindCheckboxPref(panel, "PLAYER_STANCE_COLORS_CHECKBOX", gs, "UsePlayerStanceColors");
 
 			var languageDropDownButton = panel.Get<DropDownButtonWidget>("LANGUAGE_DROPDOWNBUTTON");
 			languageDropDownButton.OnMouseDown = _ => ShowLanguageDropdown(languageDropDownButton);
@@ -335,7 +335,11 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 
 			var audioDeviceDropdown = panel.Get<DropDownButtonWidget>("AUDIO_DEVICE");
 			audioDeviceDropdown.OnMouseDown = _ => ShowAudioDeviceDropdown(audioDeviceDropdown, devices);
-			audioDeviceDropdown.GetText = () => soundDevice.Label;
+
+			var deviceFont = Game.Renderer.Fonts[audioDeviceDropdown.Font];
+			var deviceLabel = new CachedTransform<SoundDevice, string>(
+				s => WidgetUtils.TruncateText(s.Label, audioDeviceDropdown.UsableWidth, deviceFont));
+			audioDeviceDropdown.GetText = () => deviceLabel.Update(soundDevice);
 
 			return () =>
 			{
@@ -432,6 +436,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 					{ "CycleStatusBarsKey", "Cycle status bars display" },
 					{ "TogglePixelDoubleKey", "Toggle pixel doubling" },
 					{ "ToggleMuteKey", "Toggle audio mute" },
+					{ "TogglePlayerStanceColorsKey", "Toggle player stance colors" },
 
 					{ "MapScrollUp", "Map scroll up" },
 					{ "MapScrollDown", "Map scroll down" },
@@ -644,7 +649,10 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 					() => soundDevice == options[o],
 					() => soundDevice = options[o]);
 
-				item.Get<LabelWidget>("LABEL").GetText = () => options[o].Label;
+				var deviceLabel = item.Get<LabelWidget>("LABEL");
+				var font = Game.Renderer.Fonts[deviceLabel.Font];
+				var label = WidgetUtils.TruncateText(options[o].Label, deviceLabel.Bounds.Width, font);
+				deviceLabel.GetText = () => label;
 				return item;
 			};
 

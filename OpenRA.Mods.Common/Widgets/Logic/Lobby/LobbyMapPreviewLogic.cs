@@ -8,7 +8,6 @@
  */
 #endregion
 
-using System;
 using OpenRA.Network;
 using OpenRA.Widgets;
 
@@ -16,6 +15,10 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 {
 	public class LobbyMapPreviewLogic : ChromeLogic
 	{
+		readonly int blinkTickLength = 10;
+		bool installHighlighted;
+		int blinkTick;
+
 		[ObjectCreator.UseCtor]
 		internal LobbyMapPreviewLogic(Widget widget, OrderManager orderManager, LobbyLogic lobby)
 		{
@@ -93,7 +96,10 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 
 				var install = download.GetOrNull<ButtonWidget>("MAP_INSTALL");
 				if (install != null)
+				{
 					install.OnClick = () => lobby.Map.Install();
+					install.IsHighlighted = () => installHighlighted;
+				}
 			}
 
 			var progress = widget.GetOrNull("MAP_PROGRESS");
@@ -167,6 +173,15 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 					progressbar.GetPercentage = () => lobby.Map.DownloadPercentage;
 					progressbar.IsVisible = () => !retry.IsVisible();
 				}
+			}
+		}
+
+		public override void Tick()
+		{
+			if (++blinkTick >= blinkTickLength)
+			{
+				installHighlighted ^= true;
+				blinkTick = 0;
 			}
 		}
 	}

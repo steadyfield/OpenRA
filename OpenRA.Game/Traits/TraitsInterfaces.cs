@@ -19,6 +19,8 @@ using OpenRA.Primitives;
 
 namespace OpenRA.Traits
 {
+	public sealed class RequireExplicitImplementationAttribute : Attribute { }
+
 	public enum DamageState { Undamaged, Light, Medium, Heavy, Critical, Dead }
 
 	public interface IHealth
@@ -201,7 +203,7 @@ namespace OpenRA.Traits
 		bool HasFogVisibility();
 	}
 
-	public interface IRadarColorModifier { Color RadarColorOverride(Actor self); }
+	public interface IRadarColorModifier { Color RadarColorOverride(Actor self, Color color); }
 
 	public interface IOccupySpaceInfo : ITraitInfoInterface
 	{
@@ -249,6 +251,8 @@ namespace OpenRA.Traits
 	public interface ILoadsPlayerPalettes { void LoadPlayerPalettes(WorldRenderer wr, string playerName, HSLColor playerColor, bool replaceExisting); }
 	public interface IPaletteModifier { void AdjustPalette(IReadOnlyDictionary<string, MutablePalette> b); }
 	public interface IPips { IEnumerable<PipType> GetPips(Actor self); }
+
+	[RequireExplicitImplementation]
 	public interface ISelectionBar { float GetValue(); Color GetColor(); }
 
 	public interface IPositionableInfo : ITraitInfoInterface { }
@@ -278,6 +282,13 @@ namespace OpenRA.Traits
 		CPos NearestMoveableCell(CPos target);
 		bool IsMoving { get; set; }
 		bool CanEnterTargetNow(Actor self, Target target);
+	}
+
+	[RequireExplicitImplementation]
+	public interface ITemporaryBlocker
+	{
+		bool CanRemoveBlockage(Actor self, Actor blocking);
+		bool IsBlocking(Actor self, CPos cell);
 	}
 
 	public interface INotifyBlockingMove { void OnNotifyBlockingMove(Actor self, Actor blocking); }
@@ -386,11 +397,6 @@ namespace OpenRA.Traits
 		bool IsValidAgainst(Actor victim, Actor firedBy);
 		bool IsValidAgainst(FrozenActor victim, Actor firedBy);
 		void DoImpact(Target target, Actor firedBy, IEnumerable<int> damageModifiers);
-	}
-
-	public interface IRemoveFrozenActor
-	{
-		bool RemoveActor(Actor self, Player owner);
 	}
 
 	public interface IRulesetLoaded<TInfo> { void RulesetLoaded(Ruleset rules, TInfo info); }

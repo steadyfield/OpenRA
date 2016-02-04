@@ -24,6 +24,13 @@ namespace OpenRA
 {
 	public sealed class Actor : IScriptBindable, IScriptNotifyBind, ILuaTableBinding, ILuaEqualityBinding, ILuaToStringBinding, IEquatable<Actor>, IDisposable
 	{
+		internal struct SyncHash
+		{
+			public readonly ISync Trait;
+			public readonly int Hash;
+			public SyncHash(ISync trait, int hash) { Trait = trait; Hash = hash; }
+		}
+
 		public readonly ActorInfo Info;
 
 		public readonly World World;
@@ -61,6 +68,8 @@ namespace OpenRA
 				return new WRot(WAngle.Zero, WAngle.Zero, WAngle.FromFacing(facingValue));
 			}
 		}
+
+		internal IEnumerable<SyncHash> SyncHashes { get; private set; }
 
 		readonly IFacing facing;
 		readonly IHealth health;
@@ -112,6 +121,12 @@ namespace OpenRA
 			visibilityModifiers = TraitsImplementing<IVisibilityModifier>().ToArray();
 			defaultVisibility = Trait<IDefaultVisibility>();
 			Targetables = TraitsImplementing<ITargetable>().ToArray();
+
+			SyncHashes =
+				TraitsImplementing<ISync>()
+				.Select(sync => Pair.New(sync, Sync.GetHashFunction(sync)))
+				.ToArray()
+				.Select(pair => new SyncHash(pair.First, pair.Second(pair.First)));
 		}
 
 		Rectangle DetermineBounds()
@@ -145,7 +160,7 @@ namespace OpenRA
 		public void Tick()
 		{
 			var wasIdle = IsIdle;
-			currentActivity = Traits.Util.RunActivity(this, currentActivity);
+			currentActivity = ActivityUtils.RunActivity(this, currentActivity);
 
 			if (!wasIdle && IsIdle)
 				foreach (var n in TraitsImplementing<INotifyBecomingIdle>())
@@ -288,7 +303,7 @@ namespace OpenRA
 				if (wasInWorld)
 					w.Add(this);
 
-				foreach (var t in this.TraitsImplementing<INotifyOwnerChanged>())
+				foreach (var t in TraitsImplementing<INotifyOwnerChanged>())
 					t.OnOwnerChanged(this, oldOwner, newOwner);
 			});
 		}
@@ -381,7 +396,7 @@ namespace OpenRA
 		public LuaValue Equals(LuaRuntime runtime, LuaValue left, LuaValue right)
 		{
 			Actor a, b;
-			if (!left.TryGetClrValue<Actor>(out a) || !right.TryGetClrValue<Actor>(out b))
+			if (!left.TryGetClrValue(out a) || !right.TryGetClrValue(out b))
 				return false;
 
 			return a == b;

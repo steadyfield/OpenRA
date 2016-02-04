@@ -330,8 +330,6 @@ Rules:
 	APC:
 		Health:
 			HP: 1000
-		RevealsShroud:
-			Range: 40c0
 		MustBeDestroyed:
 			RequiredForShortGame: true
 		-AttackMove:
@@ -344,7 +342,7 @@ Rules:
 		Explodes:
 			Weapon: CrateNuke
 			EmptyWeapon: CrateNuke
-		DemoTruck:
+		AttackSuicides:
 	SHOK:
 		Health:
 			HP: 800

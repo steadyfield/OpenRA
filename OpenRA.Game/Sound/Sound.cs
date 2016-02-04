@@ -33,7 +33,7 @@ namespace OpenRA
 
 		public Sound(string engineName)
 		{
-			var enginePath = Platform.ResolvePath(".", "OpenRA.Platforms." + engineName + ".dll");
+			var enginePath = Platform.ResolvePath(Path.Combine(".", "OpenRA.Platforms." + engineName + ".dll"));
 			soundEngine = CreateDevice(Assembly.LoadFile(enginePath));
 		}
 
@@ -63,11 +63,8 @@ namespace OpenRA
 				int sampleBits;
 				int sampleRate;
 				foreach (var loader in Game.ModData.SoundLoaders)
-				{
-					stream.Position = 0;
 					if (loader.TryParseSound(stream, filename, out rawData, out channels, out sampleBits, out sampleRate))
 						return soundEngine.AddSoundSourceFromMemory(rawData, channels, sampleBits, sampleRate);
-				}
 
 				throw new InvalidDataException(filename + " is not a valid sound file!");
 			}

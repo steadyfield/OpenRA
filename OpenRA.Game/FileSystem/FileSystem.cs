@@ -19,75 +19,57 @@ namespace OpenRA.FileSystem
 {
 	public class FileSystem
 	{
-		public readonly List<string> FolderPaths = new List<string>();
-		public readonly List<IFolder> MountedFolders = new List<IFolder>();
+		public IEnumerable<IReadOnlyPackage> MountedPackages { get { return mountedPackages.Keys; } }
+		readonly Dictionary<IReadOnlyPackage, int> mountedPackages = new Dictionary<IReadOnlyPackage, int>();
 
 		static readonly Dictionary<string, Assembly> AssemblyCache = new Dictionary<string, Assembly>();
+		Cache<string, List<IReadOnlyPackage>> fileIndex = new Cache<string, List<IReadOnlyPackage>>(_ => new List<IReadOnlyPackage>());
 
-		int order;
-		Cache<uint, List<IFolder>> crcHashIndex = new Cache<uint, List<IFolder>>(_ => new List<IFolder>());
-		Cache<uint, List<IFolder>> classicHashIndex = new Cache<uint, List<IFolder>>(_ => new List<IFolder>());
-
-		public IFolder CreatePackage(string filename, int order, Dictionary<string, byte[]> content)
+		public IReadWritePackage CreatePackage(string filename, Dictionary<string, byte[]> content)
 		{
-			if (filename.EndsWith(".mix", StringComparison.InvariantCultureIgnoreCase))
-				return new MixFile(this, filename, order, content);
 			if (filename.EndsWith(".zip", StringComparison.InvariantCultureIgnoreCase))
-				return new ZipFile(this, filename, order, content);
+				return new ZipFile(this, filename, content);
 			if (filename.EndsWith(".oramap", StringComparison.InvariantCultureIgnoreCase))
-				return new ZipFile(this, filename, order, content);
-			if (filename.EndsWith(".RS", StringComparison.InvariantCultureIgnoreCase))
-				throw new NotImplementedException("The creation of .RS archives is unimplemented");
-			if (filename.EndsWith(".Z", StringComparison.InvariantCultureIgnoreCase))
-				throw new NotImplementedException("The creation of .Z archives is unimplemented");
-			if (filename.EndsWith(".PAK", StringComparison.InvariantCultureIgnoreCase))
-				throw new NotImplementedException("The creation of .PAK archives is unimplemented");
-			if (filename.EndsWith(".big", StringComparison.InvariantCultureIgnoreCase))
-				throw new NotImplementedException("The creation of .big archives is unimplemented");
-			if (filename.EndsWith(".cab", StringComparison.InvariantCultureIgnoreCase))
-				throw new NotImplementedException("The creation of .cab archives is unimplemented");
+				return new ZipFile(this, filename, content);
 
-			return new Folder(filename, order, content);
+			return new Folder(filename, content);
 		}
 
-		public IFolder OpenPackage(string filename, string annotation, int order)
+		public IReadOnlyPackage OpenPackage(string filename)
 		{
 			if (filename.EndsWith(".mix", StringComparison.InvariantCultureIgnoreCase))
-			{
-				var type = string.IsNullOrEmpty(annotation)
-					? PackageHashType.Classic
-					: FieldLoader.GetValue<PackageHashType>("(value)", annotation);
-
-				return new MixFile(this, filename, type, order);
-			}
-
+				return new MixFile(this, filename);
 			if (filename.EndsWith(".zip", StringComparison.InvariantCultureIgnoreCase))
-				return new ZipFile(this, filename, order);
+				return new ZipFile(this, filename);
 			if (filename.EndsWith(".oramap", StringComparison.InvariantCultureIgnoreCase))
-				return new ZipFile(this, filename, order);
+				return new ZipFile(this, filename);
 			if (filename.EndsWith(".RS", StringComparison.InvariantCultureIgnoreCase))
-				return new D2kSoundResources(this, filename, order);
+				return new D2kSoundResources(this, filename);
 			if (filename.EndsWith(".Z", StringComparison.InvariantCultureIgnoreCase))
-				return new InstallShieldPackage(this, filename, order);
+				return new InstallShieldPackage(this, filename);
 			if (filename.EndsWith(".PAK", StringComparison.InvariantCultureIgnoreCase))
-				return new PakFile(this, filename, order);
+				return new PakFile(this, filename);
 			if (filename.EndsWith(".big", StringComparison.InvariantCultureIgnoreCase))
-				return new BigFile(this, filename, order);
+				return new BigFile(this, filename);
 			if (filename.EndsWith(".bag", StringComparison.InvariantCultureIgnoreCase))
-				return new BagFile(this, filename, order);
+				return new BagFile(this, filename);
 			if (filename.EndsWith(".hdr", StringComparison.InvariantCultureIgnoreCase))
-				return new InstallShieldCABExtractor(this, filename, order);
+				return new InstallShieldCABExtractor(this, filename);
 
-			return new Folder(filename, order);
+			return new Folder(filename);
 		}
 
-		public void Mount(IFolder mount)
+		public IReadWritePackage OpenWritablePackage(string filename)
 		{
-			if (!MountedFolders.Contains(mount))
-				MountedFolders.Add(mount);
+			if (filename.EndsWith(".zip", StringComparison.InvariantCultureIgnoreCase))
+				return new ZipFile(this, filename);
+			if (filename.EndsWith(".oramap", StringComparison.InvariantCultureIgnoreCase))
+				return new ZipFile(this, filename);
+
+			return new Folder(filename);
 		}
 
-		public void Mount(string name, string annotation = null)
+		public void Mount(string name)
 		{
 			var optional = name.StartsWith("~");
 			if (optional)
@@ -95,9 +77,7 @@ namespace OpenRA.FileSystem
 
 			name = Platform.ResolvePath(name);
 
-			FolderPaths.Add(name);
-			Action a = () => MountInner(OpenPackage(name, annotation, order++));
-
+			Action a = () => Mount(OpenPackage(name));
 			if (optional)
 				try { a(); }
 				catch { }
@@ -105,63 +85,72 @@ namespace OpenRA.FileSystem
 				a();
 		}
 
-		void MountInner(IFolder folder)
+		public void Mount(IReadOnlyPackage package)
 		{
-			MountedFolders.Add(folder);
-
-			foreach (var hash in folder.ClassicHashes())
+			var mountCount = 0;
+			if (mountedPackages.TryGetValue(package, out mountCount))
 			{
-				var folderList = classicHashIndex[hash];
-				if (!folderList.Contains(folder))
-					folderList.Add(folder);
+				// Package is already mounted
+				// Increment the mount count and bump up the file loading priority
+				mountedPackages[package] = mountCount + 1;
+				foreach (var filename in package.Contents)
+				{
+					fileIndex[filename].Remove(package);
+					fileIndex[filename].Add(package);
+				}
 			}
-
-			foreach (var hash in folder.CrcHashes())
+			else
 			{
-				var folderList = crcHashIndex[hash];
-				if (!folderList.Contains(folder))
-					folderList.Add(folder);
+				// Mounting the package for the first time
+				mountedPackages.Add(package, 1);
+				foreach (var filename in package.Contents)
+					fileIndex[filename].Add(package);
 			}
 		}
 
-		public bool Unmount(IFolder mount)
+		public bool Unmount(IReadOnlyPackage package)
 		{
-			if (MountedFolders.Contains(mount))
-				mount.Dispose();
+			var mountCount = 0;
+			if (!mountedPackages.TryGetValue(package, out mountCount))
+				return false;
 
-			return MountedFolders.RemoveAll(f => f == mount) > 0;
+			if (--mountCount <= 0)
+			{
+				foreach (var packagesForFile in fileIndex.Values)
+					packagesForFile.RemoveAll(p => p == package);
+
+				mountedPackages.Remove(package);
+				package.Dispose();
+			}
+			else
+				mountedPackages[package] = mountCount;
+
+			return true;
 		}
 
 		public void UnmountAll()
 		{
-			foreach (var folder in MountedFolders)
-				folder.Dispose();
+			foreach (var package in mountedPackages.Keys)
+				package.Dispose();
 
-			MountedFolders.Clear();
-			FolderPaths.Clear();
-			classicHashIndex = new Cache<uint, List<IFolder>>(_ => new List<IFolder>());
-			crcHashIndex = new Cache<uint, List<IFolder>>(_ => new List<IFolder>());
+			mountedPackages.Clear();
+			fileIndex = new Cache<string, List<IReadOnlyPackage>>(_ => new List<IReadOnlyPackage>());
 		}
 
 		public void LoadFromManifest(Manifest manifest)
 		{
 			UnmountAll();
-			foreach (var dir in manifest.Folders)
-				Mount(dir);
-
 			foreach (var pkg in manifest.Packages)
-				Mount(pkg.Key, pkg.Value);
+				Mount(pkg);
 		}
 
-		Stream GetFromCache(PackageHashType type, string filename)
+		Stream GetFromCache(string filename)
 		{
-			var index = type == PackageHashType.CRC32 ? crcHashIndex : classicHashIndex;
-			var folder = index[PackageEntry.HashFilename(filename, type)]
-				.Where(x => x.Exists(filename))
-				.MinByOrDefault(x => x.Priority);
+			var package = fileIndex[filename]
+				.LastOrDefault(x => x.Contains(filename));
 
-			if (folder != null)
-				return folder.GetContent(filename);
+			if (package != null)
+				return package.GetStream(filename);
 
 			return null;
 		}
@@ -178,40 +167,36 @@ namespace OpenRA.FileSystem
 		public bool TryOpen(string name, out Stream s)
 		{
 			var filename = name;
-			var foldername = string.Empty;
+			var packageName = string.Empty;
 
 			// Used for faction specific packages; rule out false positive on Windows C:\ drive notation
-			var explicitFolder = name.Contains(':') && !Directory.Exists(Path.GetDirectoryName(name));
-			if (explicitFolder)
+			var explicitPackage = name.Contains(':') && !Directory.Exists(Path.GetDirectoryName(name));
+			if (explicitPackage)
 			{
 				var divide = name.Split(':');
-				foldername = divide.First();
+				packageName = divide.First();
 				filename = divide.Last();
 			}
 
-			// Check the cache for a quick lookup if the folder name is unknown
-			// TODO: This disables caching for explicit folder requests
-			if (filename.IndexOfAny(new char[] { '/', '\\' }) == -1 && !explicitFolder)
+			// Check the cache for a quick lookup if the package name is unknown
+			// TODO: This disables caching for explicit package requests
+			if (filename.IndexOfAny(new[] { '/', '\\' }) == -1 && !explicitPackage)
 			{
-				s = GetFromCache(PackageHashType.Classic, filename);
-				if (s != null)
-					return true;
-
-				s = GetFromCache(PackageHashType.CRC32, filename);
+				s = GetFromCache(filename);
 				if (s != null)
 					return true;
 			}
 
 			// Ask each package individually
-			IFolder folder;
-			if (explicitFolder && !string.IsNullOrEmpty(foldername))
-				folder = MountedFolders.Where(x => x.Name == foldername).MaxByOrDefault(x => x.Priority);
+			IReadOnlyPackage package;
+			if (explicitPackage && !string.IsNullOrEmpty(packageName))
+				package = mountedPackages.Keys.LastOrDefault(x => x.Name == packageName);
 			else
-				folder = MountedFolders.Where(x => x.Exists(filename)).MaxByOrDefault(x => x.Priority);
+				package = mountedPackages.Keys.LastOrDefault(x => x.Contains(filename));
 
-			if (folder != null)
+			if (package != null)
 			{
-				s = folder.GetContent(filename);
+				s = package.GetStream(filename);
 				return true;
 			}
 
@@ -221,16 +206,16 @@ namespace OpenRA.FileSystem
 
 		public bool Exists(string name)
 		{
-			var explicitFolder = name.Contains(':') && !Directory.Exists(Path.GetDirectoryName(name));
-			if (explicitFolder)
+			var explicitPackage = name.Contains(':') && !Directory.Exists(Path.GetDirectoryName(name));
+			if (explicitPackage)
 			{
 				var divide = name.Split(':');
-				var foldername = divide.First();
+				var packageName = divide.First();
 				var filename = divide.Last();
-				return MountedFolders.Where(n => n.Name == foldername).Any(f => f.Exists(filename));
+				return mountedPackages.Keys.Where(n => n.Name == packageName).Any(f => f.Contains(filename));
 			}
 			else
-				return MountedFolders.Any(f => f.Exists(name));
+				return mountedPackages.Keys.Any(f => f.Contains(name));
 		}
 
 		public static Assembly ResolveAssembly(object sender, ResolveEventArgs e)

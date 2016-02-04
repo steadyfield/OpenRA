@@ -1899,7 +1899,7 @@ namespace OpenRA.Mods.Common.UtilityCommands
 
 					// Rename *CrateAction.ValidRaces
 					if (depth == 2 && node.Key == "ValidRaces"
-					    && (parentKey == "DuplicateUnitCrateAction" || parentKey == "GiveUnitCrateAction"))
+						&& (parentKey == "DuplicateUnitCrateAction" || parentKey == "GiveUnitCrateAction"))
 						node.Key = "ValidFactions";
 				}
 
@@ -2414,7 +2414,7 @@ namespace OpenRA.Mods.Common.UtilityCommands
 					}
 				}
 
-				if (engineVersion < 20151102 && depth == 2)
+				if (engineVersion < 20151225 && depth == 2)
 				{
 					if (node.Key == "Color")
 					{
@@ -2436,7 +2436,7 @@ namespace OpenRA.Mods.Common.UtilityCommands
 				}
 
 				// DeathType on Explodes was renamed to DeathTypes
-				if (engineVersion < 20151110)
+				if (engineVersion < 20151225)
 				{
 					if (node.Key == "Explodes")
 					{
@@ -2457,7 +2457,7 @@ namespace OpenRA.Mods.Common.UtilityCommands
 					}
 				}
 
-				if (engineVersion < 20151127)
+				if (engineVersion < 20151225)
 				{
 					// Rename WithTurret to WithSpriteTurret
 					if (depth == 1 && node.Key.StartsWith("WithTurret"))
@@ -2512,7 +2512,7 @@ namespace OpenRA.Mods.Common.UtilityCommands
 				}
 
 				// Mobile actors immobilized by Carryable, Cargo, DeployToUpgrade, and/or others using upgrade(s)
-				if (engineVersion < 20151204 && depth == 0)
+				if (engineVersion < 20151225 && depth == 0)
 				{
 					var notMobile = "notmobile";
 
@@ -2685,7 +2685,7 @@ namespace OpenRA.Mods.Common.UtilityCommands
 				}
 
 				// 'CloseEnough' on 'RepairableNear' uses WDist now
-				if (engineVersion < 20151214)
+				if (engineVersion < 20151225)
 				{
 					if (node.Key == "RepairableNear")
 					{
@@ -2696,7 +2696,7 @@ namespace OpenRA.Mods.Common.UtilityCommands
 				}
 
 				// Added width support for line particles
-				if (engineVersion < 20151220 && node.Key == "WeatherOverlay")
+				if (engineVersion < 20151225 && node.Key == "WeatherOverlay")
 				{
 					var useSquares = node.Value.Nodes.FirstOrDefault(n => n.Key == "UseSquares");
 					if (useSquares != null && !FieldLoader.GetValue<bool>("UseSquares", useSquares.Value.Value))
@@ -2830,7 +2830,7 @@ namespace OpenRA.Mods.Common.UtilityCommands
 					}
 				}
 
-				if (engineVersion < 20160701 && depth == 1 && node.Key.StartsWith("Cloak"))
+				if (engineVersion < 20160107 && depth == 1 && node.Key.StartsWith("Cloak"))
 				{
 					var defaultCloakType = Traits.UncloakType.Attack
 						| Traits.UncloakType.Unload | Traits.UncloakType.Infiltrate | Traits.UncloakType.Demolish;
@@ -2873,6 +2873,53 @@ namespace OpenRA.Mods.Common.UtilityCommands
 						if (t.HasFlag(Traits.UncloakType.Move))
 							ts.Add("Move");
 						node.Value.Nodes.Add(new MiniYamlNode("UncloakOn", ts.JoinWith(", ")));
+					}
+				}
+
+				// Rename WithDockingOverlay to WithDockedOverlay
+				if (engineVersion < 20160116)
+				{
+					if (node.Key.StartsWith("WithDockingOverlay"))
+						node.Key = "WithDockedOverlay" + node.Key.Substring(18);
+				}
+
+				if (engineVersion < 20160116)
+				{
+					if (node.Key == "DemoTruck")
+						node.Key = "AttackSuicides";
+				}
+
+				// Replaced GpsRemoveFrozenActor with FrozenUnderFogUpdatedByGps
+				if (engineVersion < 20160117)
+				{
+					if (node.Key == "GpsRemoveFrozenActor")
+					{
+						node.Key = "FrozenUnderFogUpdatedByGps";
+						node.Value.Nodes.Clear();
+					}
+				}
+
+				// Removed arbitrary defaults from InfiltrateForCash
+				if (engineVersion < 20160118)
+				{
+					if (node.Key == "InfiltrateForCash")
+					{
+						if (!node.Value.Nodes.Any(n => n.Key == "Percentage"))
+							node.Value.Nodes.Add(new MiniYamlNode("Percentage", "50"));
+
+						if (!node.Value.Nodes.Any(n => n.Key == "Minimum"))
+							node.Value.Nodes.Add(new MiniYamlNode("Minimum", "500"));
+
+						var sound = node.Value.Nodes.FirstOrDefault(n => n.Key == "SoundToVictim");
+						if (sound != null)
+						{
+							node.Value.Nodes.Remove(sound);
+							Console.WriteLine("The 'SoundToVictim' property of the 'InfiltrateForCash' trait has been");
+							Console.WriteLine("replaced with a 'Notification' property. Please add the sound file");
+							Console.WriteLine("'{0}' to your mod's audio notification yaml and".F(sound.Value.Value));
+							Console.WriteLine("update your mod's rules accordingly.");
+							Console.WriteLine();
+						}
 					}
 				}
 
@@ -3378,6 +3425,11 @@ namespace OpenRA.Mods.Common.UtilityCommands
 						node.Key = "Width";
 						ConvertPxToRange(ref node.Value.Value);
 					}
+				}
+
+				if (engineVersion < 20160124)
+				{
+					node.Value.Nodes.RemoveAll(x => x.Key == "Charges");
 				}
 
 				UpgradeWeaponRules(engineVersion, ref node.Value.Nodes, node, depth + 1);

@@ -75,7 +75,7 @@ CRATE:
 		SelectionShares: 3
 		Units: 4tnk
 		ValidFactions: soviet, russia, ukraine
-		Prerequisites: techlevel.unrestricted, fix, techcenter
+		Prerequisites: techlevel.high, fix, techcenter
 	GiveUnitCrateAction@squadlight:
 		SelectionShares: 7
 		Units: e1,e1,e1,e3,e3
@@ -116,6 +116,18 @@ HEALCRATE:
 		Notification: heal2.aud
 		SelectionShares: 1
 		Effect: heal
+
+WCRATE:
+	Inherits: ^Crate
+	Tooltip:
+		Name: Wooden Crate
+	RenderSprites:
+		Image: wcrate
+
+SCRATE:
+	Inherits: ^Crate
+	Tooltip:
+		Name: Steel Crate
 
 CAMERA:
 	EditorOnlyTooltip:

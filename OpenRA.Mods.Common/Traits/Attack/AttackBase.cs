@@ -86,9 +86,6 @@ namespace OpenRA.Mods.Common.Traits
 			if (Armaments.All(a => a.IsReloading))
 				return false;
 
-			if (target.Type == TargetType.Actor && !self.Owner.CanTargetActor(target.Actor))
-				return false;
-
 			return true;
 		}
 
@@ -305,8 +302,8 @@ namespace OpenRA.Mods.Common.Traits
 			public AttackOrderTargeter(AttackBase ab, int priority, bool negativeDamage)
 			{
 				this.ab = ab;
-				this.OrderID = ab.attackOrderName;
-				this.OrderPriority = priority;
+				OrderID = ab.attackOrderName;
+				OrderPriority = priority;
 			}
 
 			public string OrderID { get; private set; }

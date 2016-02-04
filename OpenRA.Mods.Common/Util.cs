@@ -10,12 +10,11 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
-using OpenRA.Activities;
 using OpenRA.Support;
+using OpenRA.Traits;
 
-namespace OpenRA.Traits
+namespace OpenRA.Mods.Common
 {
 	public static class Util
 	{
@@ -29,18 +28,6 @@ namespace OpenRA.Traits
 				return (facing + rot) & 0xFF;
 			else
 				return (facing - rot) & 0xFF;
-		}
-
-		public static int GetFacing(WVec d, int currentFacing)
-		{
-			if (d.LengthSquared == 0)
-				return currentFacing;
-
-			// OpenRA defines north as -y, so invert
-			var angle = WAngle.ArcTan(-d.Y, d.X, 4).Angle;
-
-			// Convert back to a facing
-			return (angle / 4 - 0x40) & 0xFF;
 		}
 
 		public static int GetNearestFacing(int facing, int desiredFacing)
@@ -61,48 +48,33 @@ namespace OpenRA.Traits
 			return a / step;
 		}
 
+		public static int QuantizeFacing(int facing, int numFrames, bool useClassicFacingFudge)
+		{
+			if (!useClassicFacingFudge || numFrames != 32)
+				return Util.QuantizeFacing(facing, numFrames);
+
+			// TD and RA divided the facing artwork into 3 frames from (north|south) to (north|south)-(east|west)
+			// and then 5 frames from (north|south)-(east|west) to (east|west)
+			var quadrant = ((facing + 31) & 0xFF) / 64;
+			if (quadrant == 0 || quadrant == 2)
+			{
+				var frame = Util.QuantizeFacing(facing, 24);
+				if (frame > 18)
+					return frame + 6;
+				if (frame > 4)
+					return frame + 3;
+				return frame;
+			}
+			else
+			{
+				var frame = Util.QuantizeFacing(facing, 40);
+				return frame < 20 ? frame - 3 : frame - 8;
+			}
+		}
+
 		public static WPos BetweenCells(World w, CPos from, CPos to)
 		{
 			return WPos.Lerp(w.Map.CenterOfCell(from), w.Map.CenterOfCell(to), 1, 2);
-		}
-
-		public static Activity SequenceActivities(params Activity[] acts)
-		{
-			return acts.Reverse().Aggregate(
-				(next, a) => { a.Queue(next); return a; });
-		}
-
-		public static Activity RunActivity(Actor self, Activity act)
-		{
-			// PERF: If there are no activities we can bail straight away and save ourselves a call to
-			// Stopwatch.GetTimestamp.
-			if (act == null)
-				return act;
-
-			// PERF: This is a hot path and must run with minimal added overhead.
-			// Calling Stopwatch.GetTimestamp is a bit expensive, so we enumerate manually to allow us to call it only
-			// once per iteration in the normal case.
-			// See also: DoTimed
-			var longTickThresholdInStopwatchTicks = PerfTimer.LongTickThresholdInStopwatchTicks;
-			var start = Stopwatch.GetTimestamp();
-			while (act != null)
-			{
-				var prev = act;
-				act = act.Tick(self);
-				var current = Stopwatch.GetTimestamp();
-				if (current - start > longTickThresholdInStopwatchTicks)
-				{
-					PerfTimer.LogLongTick(start, current, "Activity", prev);
-					start = Stopwatch.GetTimestamp();
-				}
-				else
-					start = current;
-
-				if (prev == act)
-					break;
-			}
-
-			return act;
 		}
 
 		/* pretty crap */

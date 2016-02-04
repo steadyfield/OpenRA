@@ -8,7 +8,6 @@
  */
 #endregion
 
-using System;
 using System.Collections.Generic;
 using OpenRA.Activities;
 using OpenRA.Graphics;
@@ -116,5 +115,12 @@ namespace OpenRA.Mods.Common.Traits
 	public interface IPreventsAutoTarget
 	{
 		bool PreventsAutoTarget(Actor self, Actor attacker);
+	}
+
+	[RequireExplicitImplementation]
+	interface IWallConnector
+	{
+		bool AdjacentWallCanConnect(Actor self, CPos wallLocation, string wallType, out CVec facing);
+		void SetDirty();
 	}
 }

@@ -133,10 +133,9 @@ namespace OpenRA
 				return;
 			}
 
-			var partial = Manifest.Translations.Select(MiniYaml.FromFile).Aggregate(MiniYaml.MergePartial);
-			Languages = partial.Select(t => t.Key).ToArray();
+			var yaml = MiniYaml.Merge(Manifest.Translations.Select(MiniYaml.FromFile).Append(map.TranslationDefinitions));
+			Languages = yaml.Select(t => t.Key).ToArray();
 
-			var yaml = MiniYaml.Merge(map.TranslationDefinitions, partial);
 			foreach (var y in yaml)
 			{
 				if (y.Key == Game.Settings.Graphics.Language)
@@ -176,8 +175,8 @@ namespace OpenRA
 			InitializeLoaders();
 			ModFiles.LoadFromManifest(Manifest);
 
-			// Mount map package so custom assets can be used. TODO: check priority.
-			ModFiles.Mount(ModFiles.OpenPackage(map.Path, null, int.MaxValue));
+			// Mount map package so custom assets can be used.
+			ModFiles.Mount(ModFiles.OpenPackage(map.Path));
 
 			using (new Support.PerfTimer("Map.PreloadRules"))
 				map.PreloadRules();

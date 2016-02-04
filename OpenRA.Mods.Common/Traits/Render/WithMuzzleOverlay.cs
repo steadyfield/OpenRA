@@ -59,7 +59,7 @@ namespace OpenRA.Mods.Common.Traits
 					if (turreted != null)
 						getFacing = () => turreted.TurretFacing;
 					else if (facing != null)
-						getFacing = (Func<int>)(() => facing.Facing);
+						getFacing = () => facing.Facing;
 					else
 						getFacing = () => 0;
 
@@ -84,7 +84,7 @@ namespace OpenRA.Mods.Common.Traits
 				return;
 
 			if (a.Info.MuzzleSplitFacings > 0)
-				sequence += OpenRA.Traits.Util.QuantizeFacing(getFacing(), a.Info.MuzzleSplitFacings).ToString();
+				sequence += Util.QuantizeFacing(getFacing(), a.Info.MuzzleSplitFacings).ToString();
 
 			if (barrel == null)
 				return;

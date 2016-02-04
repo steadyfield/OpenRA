@@ -88,11 +88,11 @@ v2:
 		ZOffset: 1023
 
 rallypoint:
-	flag:flagfly
+	flag: flagfly
 		Length: *
 		Offset: 11,-5
 		ZOffset: 2535
-	circles:fpls
+	circles: fpls
 		Length: *
 		ZOffset: 2047
 
@@ -238,20 +238,24 @@ fb4:
 		ZOffset: 1023
 
 scrate:
-	idle:
+	Defaults:
 		ZOffset: -511
+	idle:
 	land:
 		Start: 1
-		ZOffset: -511
 	water:
 		Start: 2
 		Length: 4
 		Tick: 500
-		ZOffset: -511
 
 wcrate:
-	idle:
+	Defaults:
 		ZOffset: -511
+	idle:
+	land:
+	water: wwcrate
+		Length: *
+		Tick: 500
 
 xcratea:
 	idle:

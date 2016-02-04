@@ -60,7 +60,7 @@ GAP:
 	Buildable:
 		Queue: Defense
 		BuildPaletteOrder: 110
-		Prerequisites: atek, ~structures.allies, ~techlevel.unrestricted
+		Prerequisites: atek, ~structures.allies, ~techlevel.high
 	Building:
 		Footprint: _ x
 		Dimensions: 1,2
@@ -493,6 +493,8 @@ AGUN:
 		Range: 6c0
 	WithBuildingExplosion:
 		Sequences: building, building_napalm, large_explosion, self_destruct
+	BodyOrientation:
+		UseClassicFacingFudge: True
 
 DOME:
 	Inherits: ^Building
@@ -646,7 +648,7 @@ GUN:
 		HasMinibib: Yes
 	Turreted:
 		ROT: 12
-		InitialFacing: 50
+		InitialFacing: 56
 	-WithSpriteBody:
 	WithTurretedSpriteBody:
 	Armament:
@@ -661,6 +663,8 @@ GUN:
 		Range: 7c0
 	WithBuildingExplosion:
 		Sequences: building, building_napalm, large_explosion, self_destruct
+	BodyOrientation:
+		UseClassicFacingFudge: True
 
 FTUR:
 	Inherits: ^Defense
@@ -741,13 +745,15 @@ SAM:
 		Amount: -40
 	DetectCloaked:
 		Range: 5c0
+	BodyOrientation:
+		UseClassicFacingFudge: True
 
 ATEK:
 	Inherits: ^ScienceBuilding
 	Buildable:
 		Queue: Building
 		BuildPaletteOrder: 140
-		Prerequisites: weap, dome, ~structures.allies, ~techlevel.unrestricted
+		Prerequisites: weap, dome, ~structures.allies, ~techlevel.high
 	Valued:
 		Cost: 1500
 	Tooltip:
@@ -998,8 +1004,7 @@ PROC:
 		Facing: 64
 	InfiltrateForCash:
 		Percentage: 50
-		Minimum: 500
-		SoundToVictim: credit1.aud
+		Notification: CreditsStolen
 	WithIdleOverlay@TOP:
 		Sequence: idle-top
 	Power:
@@ -1067,6 +1072,7 @@ HPAD:
 		SpawnOffset: 0,-256,0
 		ExitCell: 0,0
 		MoveIntoWorld: false
+		Facing: 224
 	RallyPoint:
 	Production:
 		Produces: Aircraft, Helicopter
@@ -1319,7 +1325,7 @@ STEK:
 	Buildable:
 		Queue: Building
 		BuildPaletteOrder: 150
-		Prerequisites: weap, dome, ~structures.soviet, ~techlevel.unrestricted
+		Prerequisites: weap, dome, ~structures.soviet, ~techlevel.high
 	Valued:
 		Cost: 1500
 	Tooltip:
@@ -1419,7 +1425,7 @@ KENN:
 	Inherits: ^Building
 	Buildable:
 		Queue: Building
-		BuildPaletteOrder: 25
+		BuildPaletteOrder: 175
 		Prerequisites: anypower, ~structures.soviet, ~techlevel.infonly
 	Valued:
 		Cost: 100

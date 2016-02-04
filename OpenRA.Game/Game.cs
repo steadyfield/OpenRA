@@ -86,7 +86,7 @@ namespace OpenRA
 
 		// More accurate replacement for Environment.TickCount
 		static Stopwatch stopwatch = Stopwatch.StartNew();
-		public static int RunTime { get { return (int)Game.stopwatch.ElapsedMilliseconds; } }
+		public static int RunTime { get { return (int)stopwatch.ElapsedMilliseconds; } }
 
 		public static int RenderFrame = 0;
 		public static int NetFrameNumber { get { return OrderManager.NetFrameNumber; } }
@@ -175,6 +175,43 @@ namespace OpenRA
 			GC.Collect();
 		}
 
+		public static void RestartGame()
+		{
+			var replay = OrderManager.Connection as ReplayConnection;
+			var replayName = replay != null ? replay.Filename : null;
+			var uid = OrderManager.World.Map.Uid;
+			var globalSettings = OrderManager.LobbyInfo.GlobalSettings;
+
+			// Disconnect from the current game
+			Disconnect();
+			Ui.ResetAll();
+
+			// Restart the game with the same replay/mission
+			if (replay != null)
+				JoinReplay(replayName);
+			else
+				StartMission(uid, globalSettings.GameSpeedType, globalSettings.Difficulty);
+		}
+
+		public static void StartMission(string mapUID, string gameSpeed, string difficulty, Action onStart = null)
+		{
+			OrderManager om = null;
+
+			Action lobbyReady = null;
+			lobbyReady = () =>
+			{
+				LobbyInfoChanged -= lobbyReady;
+				om.IssueOrder(Order.Command("gamespeed {0}".F(gameSpeed)));
+				om.IssueOrder(Order.Command("difficulty {0}".F(difficulty)));
+				om.IssueOrder(Order.Command("state {0}".F(Session.ClientState.Ready)));
+				if (onStart != null)
+					onStart();
+			};
+			LobbyInfoChanged += lobbyReady;
+
+			om = JoinServer(IPAddress.Loopback.ToString(), CreateLocalServer(mapUID), "");
+		}
+
 		public static bool IsHost
 		{
 			get
@@ -191,7 +228,7 @@ namespace OpenRA
 
 		public static void InitializeSettings(Arguments args)
 		{
-			Settings = new Settings(Platform.ResolvePath("^", "settings.yaml"), args);
+			Settings = new Settings(Platform.ResolvePath(Path.Combine("^", "settings.yaml")), args);
 		}
 
 		internal static void Initialize(Arguments args)
@@ -424,8 +461,8 @@ namespace OpenRA
 		// Note: These delayed actions should only be used by widgets or disposing objects
 		// - things that depend on a particular world should be queuing them on the world actor.
 		static volatile ActionQueue delayedActions = new ActionQueue();
-		public static void RunAfterTick(Action a) { delayedActions.Add(a, Game.RunTime); }
-		public static void RunAfterDelay(int delayMilliseconds, Action a) { delayedActions.Add(a, Game.RunTime + delayMilliseconds); }
+		public static void RunAfterTick(Action a) { delayedActions.Add(a, RunTime); }
+		public static void RunAfterDelay(int delayMilliseconds, Action a) { delayedActions.Add(a, RunTime + delayMilliseconds); }
 
 		static void TakeScreenshotInner()
 		{
@@ -452,7 +489,7 @@ namespace OpenRA
 
 				bitmap.Dispose();
 
-				Game.RunAfterTick(() => Debug("Saved screenshot " + filename));
+				RunAfterTick(() => Debug("Saved screenshot " + filename));
 			});
 		}
 
@@ -534,7 +571,7 @@ namespace OpenRA
 
 		static void LogicTick()
 		{
-			delayedActions.PerformActions(Game.RunTime);
+			delayedActions.PerformActions(RunTime);
 
 			if (OrderManager.Connection.ConnectionState != lastConnectionState)
 			{
@@ -567,9 +604,9 @@ namespace OpenRA
 
 				using (new PerfSample("render_widgets"))
 				{
-					Game.Renderer.WorldVoxelRenderer.BeginFrame();
+					Renderer.WorldVoxelRenderer.BeginFrame();
 					Ui.PrepareRenderables();
-					Game.Renderer.WorldVoxelRenderer.EndFrame();
+					Renderer.WorldVoxelRenderer.EndFrame();
 
 					Ui.Draw();
 
@@ -647,7 +684,7 @@ namespace OpenRA
 			{
 				// Ideal time between logic updates. Timestep = 0 means the game is paused
 				// but we still call LogicTick() because it handles pausing internally.
-				var logicInterval = worldRenderer != null && worldRenderer.World.Timestep != 0 ? worldRenderer.World.Timestep : Game.Timestep;
+				var logicInterval = worldRenderer != null && worldRenderer.World.Timestep != 0 ? worldRenderer.World.Timestep : Timestep;
 
 				// Ideal time between screen updates
 				var maxFramerate = Settings.Graphics.CapFramerate ? Settings.Graphics.MaxFramerate.Clamp(1, 1000) : 1000;

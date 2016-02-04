@@ -17,7 +17,7 @@ using ICSharpCode.SharpZipLib.Zip.Compression;
 
 namespace OpenRA.FileSystem
 {
-	public sealed class InstallShieldCABExtractor : IFolder
+	public sealed class InstallShieldCABExtractor : IReadOnlyPackage
 	{
 		const uint FileSplit = 0x1;
 		const uint FileObfuscated = 0x2;
@@ -43,7 +43,7 @@ namespace OpenRA.FileSystem
 				FirstFile = reader.ReadUInt32();
 				LastFile = reader.ReadUInt32();
 
-				reader.Seek(offset + (long)nameOffset, SeekOrigin.Begin);
+				reader.Seek(offset + nameOffset, SeekOrigin.Begin);
 				Name = reader.ReadASCIIZ();
 			}
 		}
@@ -107,7 +107,7 @@ namespace OpenRA.FileSystem
 			{
 				Version = reader.ReadUInt32();
 				VolumeInfo = reader.ReadUInt32();
-				CabDescriptorOffset = (long)reader.ReadUInt32();
+				CabDescriptorOffset = reader.ReadUInt32();
 				CabDescriptorSize = reader.ReadUInt32();
 			}
 		}
@@ -125,7 +125,7 @@ namespace OpenRA.FileSystem
 			public CabDescriptor(Stream reader, CommonHeader commonHeader)
 			{
 				reader.Seek(commonHeader.CabDescriptorOffset + 12, SeekOrigin.Begin);
-				FileTableOffset = (long)reader.ReadUInt32();
+				FileTableOffset = reader.ReadUInt32();
 				/*    unknown  */ reader.ReadUInt32();
 				FileTableSize = reader.ReadUInt32();
 
@@ -134,7 +134,7 @@ namespace OpenRA.FileSystem
 				/*   unknown  */ reader.ReadBytes(8);
 				FileCount = reader.ReadUInt32();
 
-				FileTableOffset2 = (long)reader.ReadUInt32();
+				FileTableOffset2 = reader.ReadUInt32();
 			}
 		}
 
@@ -201,7 +201,7 @@ namespace OpenRA.FileSystem
 				this.index = index;
 				this.commonName = commonName;
 				this.context = context;
-				volumeNumber = (ushort)((uint)fileDes.Volume - 1u);
+				volumeNumber = (ushort)(fileDes.Volume - 1u);
 				RemainingArchiveStream = 0;
 				if ((fileDes.Flags & FileCompressed) > 0)
 					RemainingFileStream = fileDes.CompressedSize;
@@ -329,25 +329,22 @@ namespace OpenRA.FileSystem
 		readonly List<uint> directoryTable;
 		readonly Dictionary<uint, string> directoryNames = new Dictionary<uint, string>();
 		readonly Dictionary<uint, FileDescriptor> fileDescriptors = new Dictionary<uint, FileDescriptor>();
-		readonly Dictionary<string, uint> fileLookup = new Dictionary<string, uint>();
+		readonly Dictionary<string, uint> index = new Dictionary<string, uint>();
 		readonly FileSystem context;
-		int priority;
-		string commonName;
-		public int Priority { get { return priority; } }
 
-		public string Name { get { return commonName; } }
+		public string Name { get; private set; }
+		public IEnumerable<string> Contents { get { return index.Keys; } }
 
-		public InstallShieldCABExtractor(FileSystem context, string hdrFilename, int priority = -1)
+		public InstallShieldCABExtractor(FileSystem context, string hdrFilename)
 		{
 			var fileGroups = new List<FileGroup>();
 			var fileGroupOffsets = new List<uint>();
 
 			hdrFile = context.Open(hdrFilename);
-			this.priority = priority;
 			this.context = context;
 
 			// Strips archive number AND file extension
-			commonName = Regex.Replace(hdrFilename, @"\d*\.[^\.]*$", "");
+			Name = Regex.Replace(hdrFilename, @"\d*\.[^\.]*$", "");
 			var signature = hdrFile.ReadUInt32();
 
 			if (signature != 0x28635349)
@@ -374,7 +371,7 @@ namespace OpenRA.FileSystem
 					hdrFile.Seek((long)nextOffset + 4 + commonHeader.CabDescriptorOffset, SeekOrigin.Begin);
 					var descriptorOffset = hdrFile.ReadUInt32();
 					nextOffset = hdrFile.ReadUInt32();
-					hdrFile.Seek((long)descriptorOffset + commonHeader.CabDescriptorOffset, SeekOrigin.Begin);
+					hdrFile.Seek(descriptorOffset + commonHeader.CabDescriptorOffset, SeekOrigin.Begin);
 
 					fileGroups.Add(new FileGroup(hdrFile, commonHeader.CabDescriptorOffset));
 				}
@@ -383,12 +380,12 @@ namespace OpenRA.FileSystem
 			hdrFile.Seek(commonHeader.CabDescriptorOffset + cabDescriptor.FileTableOffset + cabDescriptor.FileTableOffset2, SeekOrigin.Begin);
 			foreach (var fileGroup in fileGroups)
 			{
-				for (var index = fileGroup.FirstFile; index <= fileGroup.LastFile; ++index)
+				for (var i = fileGroup.FirstFile; i <= fileGroup.LastFile; ++i)
 				{
-					AddFileDescriptorToList(index);
-					var fileDescriptor = fileDescriptors[index];
-					var fullFilePath   = "{0}\\{1}\\{2}".F(fileGroup.Name, DirectoryName((uint)fileDescriptor.DirectoryIndex), fileDescriptor.Filename);
-					fileLookup.Add(fullFilePath, index);
+					AddFileDescriptorToList(i);
+					var fileDescriptor = fileDescriptors[i];
+					var fullFilePath   = "{0}\\{1}\\{2}".F(fileGroup.Name, DirectoryName(fileDescriptor.DirectoryIndex), fileDescriptor.Filename);
+					index.Add(fullFilePath, i);
 				}
 			}
 		}
@@ -407,9 +404,9 @@ namespace OpenRA.FileSystem
 			return test;
 		}
 
-		public bool Exists(string filename)
+		public bool Contains(string filename)
 		{
-			return fileLookup.ContainsKey(filename);
+			return index.ContainsKey(filename);
 		}
 
 		public uint DirectoryCount()
@@ -451,16 +448,6 @@ namespace OpenRA.FileSystem
 				GetContentById(index, destfile);
 		}
 
-		public void Write(Dictionary<string, byte[]> input)
-		{
-			throw new NotImplementedException("Cannot Add Files To Cab");
-		}
-
-		public IEnumerable<uint> ClassicHashes()
-		{
-			return fileLookup.Keys.Select(k => PackageEntry.HashFilename(k, PackageHashType.Classic));
-		}
-
 		public Stream GetContentById(uint index)
 		{
 			var fileDes = fileDescriptors[index];
@@ -475,7 +462,7 @@ namespace OpenRA.FileSystem
 
 			var output = new MemoryStream((int)fileDes.ExpandedSize);
 
-			using (var reader = new CabReader(context, fileDes, index, commonName))
+			using (var reader = new CabReader(context, fileDes, index, Name))
 				reader.CopyTo(output);
 
 			if (output.Length != fileDes.ExpandedSize)
@@ -500,26 +487,16 @@ namespace OpenRA.FileSystem
 			if ((fileDes.Flags & FileObfuscated) != 0)
 				throw new NotImplementedException("Haven't implemented obfuscated files");
 
-			using (var reader = new CabReader(context, fileDes, index, commonName))
+			using (var reader = new CabReader(context, fileDes, index, Name))
 				reader.CopyTo(output);
 
 			if (output.Length != fileDes.ExpandedSize)
 				throw new Exception("Did not fully extract Expected = {0}, Got = {1}".F(fileDes.ExpandedSize, output.Length));
 		}
 
-		public Stream GetContent(string fileName)
+		public Stream GetStream(string fileName)
 		{
-			return GetContentById(fileLookup[fileName]);
-		}
-
-		public IEnumerable<uint> CrcHashes()
-		{
-			yield break;
-		}
-
-		public IEnumerable<string> AllFileNames()
-		{
-			return fileLookup.Keys;
+			return GetContentById(index[fileName]);
 		}
 
 		public void Dispose()

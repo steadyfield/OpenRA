@@ -7,21 +7,10 @@ Metadata:
 RequiresMods:
 	modchooser: {DEV_VERSION}
 
-Folders:
+Packages:
+	~^Content/cnc
 	.
 	./mods/cnc
-	./mods/cnc/bits
-	./mods/cnc/bits/jungle
-	./mods/cnc/bits/desert
-	./mods/cnc/bits/ss
-	./mods/cnc/uibits
-	~^Content/cnc
-
-MapFolders:
-	./mods/cnc/maps@System
-	~^maps/cnc@User
-
-Packages:
 	speech.mix
 	conquer.mix
 	sounds.mix
@@ -29,13 +18,22 @@ Packages:
 	temperat.mix
 	winter.mix
 	desert.mix
-	snow.mix
 	~movies-gdi.mix
 	~movies-nod.mix
 	~movies.mix
 	~scores.mix
 	~scores2.mix
 	~transit.mix
+	./mods/cnc/bits/snow.mix
+	./mods/cnc/bits
+	./mods/cnc/bits/jungle
+	./mods/cnc/bits/desert
+	./mods/cnc/bits/ss
+	./mods/cnc/uibits
+
+MapFolders:
+	./mods/cnc/maps@System
+	~^maps/cnc@User
 
 Rules:
 	./mods/cnc/rules/misc.yaml
@@ -146,13 +144,11 @@ LoadScreen: CncLoadScreen
 
 ContentInstaller:
 	TestFiles: ^Content/cnc/conquer.mix, ^Content/cnc/desert.mix, ^Content/cnc/sounds.mix, ^Content/cnc/speech.mix, ^Content/cnc/temperat.mix, ^Content/cnc/tempicnh.mix, ^Content/cnc/winter.mix
-	FilesToCopy: CONQUER.MIX, DESERT.MIX, SCORES.MIX, SOUNDS.MIX, TEMPERAT.MIX, WINTER.MIX
-	FilesToExtract: speech.mix, tempicnh.mix, transit.mix
 	PackageMirrorList: http://www.openra.net/packages/cnc-mirrors.txt
 	DiskTestFiles: conquer.mix, desert.mix, install/setup.z
 	PackageToExtractFromCD: install/setup.z
 	ExtractFilesFromCD:
-		.: speech.mix, tempicnh.mix, transit.mix
+		.: C&C95\SPEECH.MIX, C&C95\TEMPICNH.MIX, C&C95\TRANSIT.MIX
 	CopyFilesFromCD:
 		.: conquer.mix, desert.mix, general.mix, scores.mix, sounds.mix, temperat.mix, winter.mix
 	ShippedSoundtracks: 4
@@ -164,7 +160,6 @@ ServerTraits:
 	PlayerPinger
 	MasterServerPinger
 	LobbySettingsNotification
-	ColorValidator
 
 LobbyDefaults:
 	AllowCheats: false
@@ -176,6 +171,7 @@ LobbyDefaults:
 	TechLevel: Unrestricted
 
 ChromeMetrics:
+	./mods/common/metrics.yaml
 	./mods/cnc/metrics.yaml
 
 Fonts:
@@ -242,3 +238,5 @@ GameSpeeds:
 		Name: Fastest
 		Timestep: 20
 		OrderLatency: 6
+
+ColorValidator:

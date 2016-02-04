@@ -89,9 +89,8 @@
     <Compile Include="Traits\Buildings\ClonesProducedUnits.cs" />
     <Compile Include="Traits\Chronoshiftable.cs" />
     <Compile Include="Traits\Cloneable.cs" />
-    <Compile Include="Traits\DemoTruck.cs" />
     <Compile Include="Traits\Disguise.cs" />
-    <Compile Include="Traits\GpsRemoveFrozenActor.cs" />
+    <Compile Include="Traits\FrozenUnderFogUpdatedByGps.cs" />
     <Compile Include="Traits\HarvesterHuskModifier.cs" />
     <Compile Include="Traits\Infiltration\InfiltrateForCash.cs" />
     <Compile Include="Traits\Infiltration\InfiltrateForExploration.cs" />
@@ -114,6 +113,7 @@
     <Compile Include="Scripting\Properties\ParadropProperties.cs" />
     <Compile Include="Scripting\Properties\ParatroopersProperties.cs" />
     <Compile Include="Traits\Render\WithDisguisingInfantryBody.cs" />
+    <Compile Include="ImportRedAlertLegacyMapCommand.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\OpenRA.Game\OpenRA.Game.csproj">
