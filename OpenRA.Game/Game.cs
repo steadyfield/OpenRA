@@ -1,10 +1,11 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2015 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2016 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
- * as published by the Free Software Foundation. For more information,
- * see COPYING.
+ * as published by the Free Software Foundation, either version 3 of
+ * the License, or (at your option) any later version. For more
+ * information, see COPYING.
  */
 #endregion
 
@@ -179,8 +180,11 @@ namespace OpenRA
 		{
 			var replay = OrderManager.Connection as ReplayConnection;
 			var replayName = replay != null ? replay.Filename : null;
-			var uid = OrderManager.World.Map.Uid;
-			var globalSettings = OrderManager.LobbyInfo.GlobalSettings;
+			var lobbyInfo = OrderManager.LobbyInfo;
+			var orders = new[] {
+					Order.Command("sync_lobby {0}".F(lobbyInfo.Serialize())),
+					Order.Command("startgame")
+			};
 
 			// Disconnect from the current game
 			Disconnect();
@@ -190,10 +194,10 @@ namespace OpenRA
 			if (replay != null)
 				JoinReplay(replayName);
 			else
-				StartMission(uid, globalSettings.GameSpeedType, globalSettings.Difficulty);
+				CreateAndStartLocalServer(lobbyInfo.GlobalSettings.Map, orders);
 		}
 
-		public static void StartMission(string mapUID, string gameSpeed, string difficulty, Action onStart = null)
+		public static void CreateAndStartLocalServer(string mapUID, IEnumerable<Order> setupOrders, Action onStart = null)
 		{
 			OrderManager om = null;
 
@@ -201,9 +205,9 @@ namespace OpenRA
 			lobbyReady = () =>
 			{
 				LobbyInfoChanged -= lobbyReady;
-				om.IssueOrder(Order.Command("gamespeed {0}".F(gameSpeed)));
-				om.IssueOrder(Order.Command("difficulty {0}".F(difficulty)));
-				om.IssueOrder(Order.Command("state {0}".F(Session.ClientState.Ready)));
+				foreach (var o in setupOrders)
+					om.IssueOrder(o);
+
 				if (onStart != null)
 					onStart();
 			};
@@ -234,8 +238,6 @@ namespace OpenRA
 		internal static void Initialize(Arguments args)
 		{
 			Console.WriteLine("Platform is {0}", Platform.CurrentPlatform);
-
-			AppDomain.CurrentDomain.AssemblyResolve += FileSystem.FileSystem.ResolveAssembly;
 
 			InitializeSettings(args);
 
@@ -293,7 +295,7 @@ namespace OpenRA
 
 		public static bool IsModInstalled(string modId)
 		{
-			return Manifest.AllMods[modId].RequiresMods.All(IsModInstalled);
+			return ModMetadata.AllMods[modId].RequiresMods.All(IsModInstalled);
 		}
 
 		public static bool IsModInstalled(KeyValuePair<string, string> mod)
@@ -341,8 +343,6 @@ namespace OpenRA
 
 			ModData = new ModData(mod, !Settings.Server.Dedicated);
 
-			Sound.Initialize();
-
 			using (new PerfTimer("LoadMaps"))
 				ModData.MapCache.LoadMaps();
 
@@ -362,9 +362,8 @@ namespace OpenRA
 				return;
 			}
 
-			ModData.MountFiles();
-			ModData.InitializeLoaders();
-			Renderer.InitializeFonts(ModData.Manifest);
+			ModData.InitializeLoaders(ModData.DefaultFileSystem);
+			Renderer.InitializeFonts(ModData);
 
 			if (Cursor != null)
 				Cursor.Dispose();
@@ -446,7 +445,7 @@ namespace OpenRA
 		static string ChooseShellmap()
 		{
 			var shellmaps = ModData.MapCache
-				.Where(m => m.Status == MapStatus.Available && m.Map.Visibility.HasFlag(MapVisibility.Shellmap))
+				.Where(m => m.Status == MapStatus.Available && m.Visibility.HasFlag(MapVisibility.Shellmap))
 				.Select(m => m.Uid);
 
 			if (!shellmaps.Any())

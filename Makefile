@@ -42,7 +42,8 @@
 
 ############################## TOOLCHAIN ###############################
 #
-CSC         = mcs -sdk:4.0
+SDK         ?=
+CSC         = mcs $(SDK)
 CSFLAGS     = -nologo -warn:4 -codepage:utf8 -unsafe -warnaserror
 DEFINE      = TRACE
 COMMON_LIBS = System.dll System.Core.dll System.Data.dll System.Data.DataSetExtensions.dll System.Drawing.dll System.Xml.dll thirdparty/download/ICSharpCode.SharpZipLib.dll thirdparty/download/FuzzyLogicLibrary.dll thirdparty/download/Mono.Nat.dll thirdparty/download/MaxMind.Db.dll thirdparty/download/MaxMind.GeoIP2.dll thirdparty/download/Eluant.dll thirdparty/download/SmarIrc4net.dll
@@ -358,8 +359,9 @@ all-dependencies: cli-dependencies windows-dependencies osx-dependencies
 version: mods/ra/mod.yaml mods/cnc/mod.yaml mods/d2k/mod.yaml mods/ts/mod.yaml mods/modchooser/mod.yaml mods/all/mod.yaml
 	@for i in $? ; do \
 		awk '{sub("Version:.*$$","Version: $(VERSION)"); print $0}' $${i} > $${i}.tmp && \
-		awk '{sub("\tmodchooser:.*$$","\tmodchooser: $(VERSION)"); print $0}' $${i}.tmp > $${i} && \
-		rm $${i}.tmp ; \
+		awk '{sub("\tmodchooser:.*$$","\tmodchooser: $(VERSION)"); print $0}' $${i}.tmp > $${i}.tmp2 && \
+		awk '{sub("/[^/]*: User$$", "/$(VERSION): User"); print $0}' $${i}.tmp2 > $${i} && \
+		rm $${i}.tmp $${i}.tmp2; \
 	done
 
 docs: utility mods version

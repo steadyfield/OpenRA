@@ -1,10 +1,11 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2015 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2016 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
- * as published by the Free Software Foundation. For more information,
- * see COPYING.
+ * as published by the Free Software Foundation, either version 3 of
+ * the License, or (at your option) any later version. For more
+ * information, see COPYING.
  */
 #endregion
 
@@ -31,6 +32,8 @@ namespace OpenRA.Platforms.Default
 		}
 
 		public static GLFeatures Features { get; private set; }
+
+		public static string Version { get; private set; }
 
 		public const int GL_FALSE = 0;
 
@@ -451,8 +454,8 @@ namespace OpenRA.Platforms.Default
 		{
 			try
 			{
-				var versionString = glGetString(GL_VERSION);
-				var version = versionString.Contains(" ") ? versionString.Split(' ')[0].Split('.') : versionString.Split('.');
+				Version = glGetString(GL_VERSION);
+				var version = Version.Contains(" ") ? Version.Split(' ')[0].Split('.') : Version.Split('.');
 
 				var major = 0;
 				if (version.Length > 0)

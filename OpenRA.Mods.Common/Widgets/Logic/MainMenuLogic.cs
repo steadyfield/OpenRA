@@ -1,10 +1,11 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2015 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2016 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
- * as published by the Free Software Foundation. For more information,
- * see COPYING.
+ * as published by the Free Software Foundation, either version 3 of
+ * the License, or (at your option) any later version. For more
+ * information, see COPYING.
  */
 #endregion
 
@@ -40,10 +41,10 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 		}
 
 		[ObjectCreator.UseCtor]
-		public MainMenuLogic(Widget widget, World world)
+		public MainMenuLogic(Widget widget, World world, ModData modData)
 		{
 			rootMenu = widget;
-			rootMenu.Get<LabelWidget>("VERSION_LABEL").Text = Game.ModData.Manifest.Mod.Version;
+			rootMenu.Get<LabelWidget>("VERSION_LABEL").Text = modData.Manifest.Mod.Version;
 
 			// Menu buttons
 			var mainMenu = widget.Get("MAIN_MENU");
@@ -69,7 +70,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 				// so we can't do this inside the input handler.
 				Game.RunAfterTick(() =>
 				{
-					Game.Settings.Game.PreviousMod = Game.ModData.Manifest.Mod.Id;
+					Game.Settings.Game.PreviousMod = modData.Manifest.Mod.Id;
 					Game.InitializeMod("modchooser", null);
 				});
 			};
@@ -102,9 +103,9 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 				});
 			};
 
-			var hasCampaign = Game.ModData.Manifest.Missions.Any();
-			var hasMissions = Game.ModData.MapCache
-				.Any(p => p.Status == MapStatus.Available && p.Map.Visibility.HasFlag(MapVisibility.MissionSelector));
+			var hasCampaign = modData.Manifest.Missions.Any();
+			var hasMissions = modData.MapCache
+				.Any(p => p.Status == MapStatus.Available && p.Visibility.HasFlag(MapVisibility.MissionSelector));
 
 			missionsButton.Disabled = !hasCampaign && !hasMissions;
 
@@ -167,7 +168,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			var onSelect = new Action<string>(uid =>
 			{
 				RemoveShellmapUI();
-				LoadMapIntoEditor(Game.ModData.MapCache[uid].Map);
+				LoadMapIntoEditor(modData.MapCache[uid].Uid);
 			});
 
 			var newMapButton = widget.Get<ButtonWidget>("NEW_MAP_BUTTON");
@@ -219,7 +220,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 				if (newsButton != null)
 				{
 					if (!fetchedNews)
-						new Download(Game.Settings.Game.NewsUrl, cacheFile, e => { },
+						new Download(Game.Settings.Game.NewsUrl + SysInfoQuery(), cacheFile, e => { },
 							(e, c) => NewsDownloadComplete(e, cacheFile, currentNews,
 							() => newsButton.AttachPanel(newsPanel)));
 
@@ -242,13 +243,30 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			});
 		}
 
-		void LoadMapIntoEditor(Map map)
+		void LoadMapIntoEditor(string uid)
 		{
 			ConnectionLogic.Connect(IPAddress.Loopback.ToString(),
-				Game.CreateLocalServer(map.Uid),
+				Game.CreateLocalServer(uid),
 				"",
-				() => { Game.LoadEditor(map.Uid); },
+				() => { Game.LoadEditor(uid); },
 				() => { Game.CloseServer(); SwitchMenu(MenuType.MapEditor); });
+		}
+
+		string SysInfoQuery()
+		{
+			if (!Game.Settings.Debug.SendSystemInformation)
+				return null;
+
+			return "?id={0}&platform={1}&os={2}&runtime={3}&gl={4}&lang={5}&version={6}&mod={7}&modversion={8}".F(
+				Uri.EscapeUriString(Game.Settings.Debug.UUID),
+				Uri.EscapeUriString(Platform.CurrentPlatform.ToString()),
+				Uri.EscapeUriString(Environment.OSVersion.ToString()),
+				Uri.EscapeUriString(Platform.RuntimeVersion),
+				Uri.EscapeUriString(Game.Renderer.GLVersion),
+				Uri.EscapeUriString(System.Globalization.CultureInfo.InstalledUICulture.TwoLetterISOLanguageName),
+				Uri.EscapeUriString(ModMetadata.AllMods["modchooser"].Version),
+				Uri.EscapeUriString(Game.ModData.Manifest.Mod.Id),
+				Uri.EscapeUriString(Game.ModData.Manifest.Mod.Version));
 		}
 
 		void SetNewsStatus(string message)

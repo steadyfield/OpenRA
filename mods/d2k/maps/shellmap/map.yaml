@@ -1,10 +1,8 @@
-MapFormat: 8
+MapFormat: 10
 
 RequiresMod: d2k
 
 Title: D2k Shellmap
-
-Description: Static Shellmap
 
 Author: Westwood Studios
 
@@ -17,10 +15,6 @@ Bounds: 16,16,80,80
 Visibility: Shellmap
 
 Type: Shellmap
-
-Videos:
-
-Options:
 
 Players:
 	PlayerReference@Neutral:
@@ -111,34 +105,4 @@ Actors:
 		Location: 57,58
 		Owner: Atreides
 
-Smudges:
-
-Rules:
-	World:
-		-CrateSpawner:
-		-SpawnMPUnits:
-		-MPStartLocations:
-		ResourceType@Spice:
-			ValuePerUnit: 0
-		WormManager:
-			Minimum: 1
-			Maximum: 1
-		MusicPlaylist:
-			BackgroundMusic: options
-	large_gun_turret:
-		Power:
-			Amount: 100
-
-Sequences:
-
-VoxelSequences:
-
-Weapons:
-
-Voices:
-
-Music:
-
-Notifications:
-
-Translations:
+Rules: rules.yaml

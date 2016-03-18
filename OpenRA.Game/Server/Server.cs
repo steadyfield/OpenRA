@@ -1,10 +1,11 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2015 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2016 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
- * as published by the Free Software Foundation. For more information,
- * see COPYING.
+ * as published by the Free Software Foundation, either version 3 of
+ * the License, or (at your option) any later version. For more
+ * information, see COPYING.
  */
 #endregion
 
@@ -50,8 +51,7 @@ namespace OpenRA.Server
 		public List<string> TempBans = new List<string>();
 
 		// Managed by LobbyCommands
-		public Map Map;
-		public MapPlayers MapPlayers;
+		public MapPreview Map;
 
 		readonly int randomSeed;
 		readonly TcpListener listener;
@@ -148,20 +148,19 @@ namespace OpenRA.Server
 					RandomSeed = randomSeed,
 					Map = settings.Map,
 					ServerName = settings.Name,
-					Dedicated = settings.Dedicated
+					Dedicated = settings.Dedicated,
+					DisableSingleplayer = settings.DisableSinglePlayer,
 				}
 			};
 
-			FieldLoader.Load(LobbyInfo.GlobalSettings, modData.Manifest.LobbyDefaults);
-
-			foreach (var t in serverTraits.WithInterface<INotifyServerStart>())
-				t.ServerStarted(this);
-
-			Log.Write("server", "Initial mod: {0}", ModData.Manifest.Mod.Id);
-			Log.Write("server", "Initial map: {0}", LobbyInfo.GlobalSettings.Map);
-
 			new Thread(_ =>
 			{
+				foreach (var t in serverTraits.WithInterface<INotifyServerStart>())
+					t.ServerStarted(this);
+
+				Log.Write("server", "Initial mod: {0}", ModData.Manifest.Mod.Id);
+				Log.Write("server", "Initial map: {0}", LobbyInfo.GlobalSettings.Map);
+
 				var timeout = serverTraits.WithInterface<ITick>().Min(t => t.TickTimeout);
 				for (;;)
 				{
@@ -323,7 +322,7 @@ namespace OpenRA.Server
 				}
 
 				if (client.Slot != null)
-					SyncClientToPlayerReference(client, MapPlayers.Players[client.Slot]);
+					SyncClientToPlayerReference(client, Map.Players.Players[client.Slot]);
 				else
 					client.Color = HSLColor.FromRGB(255, 255, 255);
 
@@ -392,12 +391,12 @@ namespace OpenRA.Server
 						SendOrderTo(newConn, "Message", motd);
 				}
 
-				if (Map.RuleDefinitions.Any() && !LobbyInfo.IsSinglePlayer)
+				if (Map.Rules != ModData.DefaultRules && !LobbyInfo.IsSinglePlayer)
 					SendOrderTo(newConn, "Message", "This map contains custom rules. Game experience may change.");
 
-				if (Settings.LockBots)
-					SendOrderTo(newConn, "Message", "Bots have been disabled on this server.");
-				else if (MapPlayers.Players.Where(p => p.Value.Playable).All(p => !p.Value.AllowBots))
+				if (Settings.DisableSinglePlayer)
+					SendOrderTo(newConn, "Message", "Singleplayer games have been disabled on this server.");
+				else if (Map.Players.Players.Where(p => p.Value.Playable).All(p => !p.Value.AllowBots))
 					SendOrderTo(newConn, "Message", "Bots have been disabled on this map.");
 
 				if (handshake.Mod == "{DEV_VERSION}")
@@ -606,10 +605,7 @@ namespace OpenRA.Server
 				DispatchOrders(toDrop, frame, new byte[] { 0xbf });
 
 				if (!Conns.Any())
-				{
-					FieldLoader.Load(LobbyInfo.GlobalSettings, ModData.Manifest.LobbyDefaults);
 					TempBans.Clear();
-				}
 
 				if (Conns.Any() || LobbyInfo.GlobalSettings.Dedicated)
 					SyncLobbyClients();

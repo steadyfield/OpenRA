@@ -52,7 +52,7 @@ if (!(Test-Path "MaxMind.GeoIP2.dll"))
 if (!(Test-Path "SharpFont.dll"))
 {
 	echo "Fetching SharpFont from NuGet."
-	./nuget.exe install SharpFont -Version 3.0.0 -ExcludeVersion
+	./nuget.exe install SharpFont -Version 3.1.0 -ExcludeVersion
 	cp SharpFont/lib/net20/SharpFont* .
 	cp SharpFont/config/SharpFont.dll.config .
 	rmdir SharpFont -Recurse
@@ -69,17 +69,29 @@ if (!(Test-Path "nunit.framework.dll"))
 
 if (!(Test-Path "windows/SDL2.dll"))
 {
-	echo "Fetching SDL2 from NuGet."
-	./nuget.exe install sdl2 -Version 2.0.3 -ExcludeVersion
-	cp sdl2.redist/build/native/bin/Win32/dynamic/SDL2.dll ./windows/
-	rmdir sdl2 -Recurse
-	rmdir sdl2.redist -Recurse
+	echo "Fetching SDL2 from libsdl.org"
+	
+	# Download zip:
+	$zipFileName = "SDL2-2.0.4-win32-x86.zip"
+	$target = Join-Path $pwd.ToString() $zipFileName
+	(New-Object System.Net.WebClient).DownloadFile("https://www.libsdl.org/release/" + $zipFileName, $target)
+	
+	# Extract zip:
+	$shell_app=new-object -com shell.application
+	$currentPath = (Get-Location).Path
+	$zipFile = $shell_app.namespace($currentPath + "\$zipFileName")
+	$destination = $shell_app.namespace($currentPath + "\windows")
+	$destination.Copyhere($zipFile.items())
+	
+	# Remove junk files:
+	rm SDL2-2.0.4-win32-x86.zip
+	rm -path "$currentPath\windows\README-SDL.txt"
 }
 
 if (!(Test-Path "Mono.Nat.dll"))
 {
 	echo "Fetching Mono.Nat from NuGet."
-	./nuget.exe install Mono.Nat -Version 1.2.21 -ExcludeVersion
+	./nuget.exe install Mono.Nat -Version 1.2.24 -ExcludeVersion
 	cp Mono.Nat/lib/net40/Mono.Nat.dll .
 	rmdir Mono.Nat -Recurse
 }

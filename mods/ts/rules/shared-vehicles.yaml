@@ -54,7 +54,7 @@ HARV:
 		Bounds: 36,36
 	Harvester:
 		DeliveryBuildings: proc
-		Capacity: 20
+		Capacity: 28
 		Resources: Tiberium, BlueTiberium
 		UnloadTicksPerBale: 1
 		SearchFromProcRadius: 36
@@ -117,7 +117,7 @@ LPST:
 		Type: Wood
 	Mobile:
 		Speed: 85
-		ROT: 5
+		TurnSpeed: 5
 	RevealsShroud:
 		Range: 7c0
 	RenderSprites:

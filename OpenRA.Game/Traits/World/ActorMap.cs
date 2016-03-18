@@ -1,10 +1,11 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2015 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2016 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
- * as published by the Free Software Foundation. For more information,
- * see COPYING.
+ * as published by the Free Software Foundation, either version 3 of
+ * the License, or (at your option) any later version. For more
+ * information, see COPYING.
  */
 #endregion
 
@@ -248,9 +249,9 @@ namespace OpenRA.Traits
 				return preferredSubCell;
 
 			if (!AnyActorsAt(cell))
-				return map.DefaultSubCell;
+				return map.Grid.DefaultSubCell;
 
-			for (var i = (int)SubCell.First; i < map.SubCellOffsets.Length; i++)
+			for (var i = (int)SubCell.First; i < map.Grid.SubCellOffsets.Length; i++)
 				if (i != (int)preferredSubCell && !AnyActorsAt(cell, (SubCell)i, checkTransient))
 					return (SubCell)i;
 
@@ -263,9 +264,9 @@ namespace OpenRA.Traits
 				return preferredSubCell;
 
 			if (!AnyActorsAt(cell))
-				return map.DefaultSubCell;
+				return map.Grid.DefaultSubCell;
 
-			for (var i = (int)SubCell.First; i < map.SubCellOffsets.Length; i++)
+			for (var i = (int)SubCell.First; i < map.Grid.SubCellOffsets.Length; i++)
 				if (i != (int)preferredSubCell && !AnyActorsAt(cell, (SubCell)i, checkIfBlocker))
 					return (SubCell)i;
 			return SubCell.Invalid;

@@ -1,10 +1,11 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2015 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2016 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
- * as published by the Free Software Foundation. For more information,
- * see COPYING.
+ * as published by the Free Software Foundation, either version 3 of
+ * the License, or (at your option) any later version. For more
+ * information, see COPYING.
  */
 #endregion
 
@@ -16,6 +17,7 @@ using System.Linq;
 using System.Net;
 using System.Text;
 using System.Threading;
+using OpenRA.FileSystem;
 using OpenRA.Graphics;
 using OpenRA.Primitives;
 
@@ -23,7 +25,9 @@ namespace OpenRA
 {
 	public sealed class MapCache : IEnumerable<MapPreview>, IDisposable
 	{
-		public static readonly MapPreview UnknownMap = new MapPreview(null, MapGridType.Rectangular, null);
+		public static readonly MapPreview UnknownMap = new MapPreview(null, null, MapGridType.Rectangular, null);
+		public readonly IReadOnlyDictionary<IReadOnlyPackage, MapClassification> MapLocations;
+
 		readonly Cache<string, MapPreview> previews;
 		readonly ModData modData;
 		readonly SheetBuilder sheetBuilder;
@@ -37,33 +41,73 @@ namespace OpenRA
 			this.modData = modData;
 
 			var gridType = Exts.Lazy(() => modData.Manifest.Get<MapGrid>().Type);
-			previews = new Cache<string, MapPreview>(uid => new MapPreview(uid, gridType.Value, this));
+			previews = new Cache<string, MapPreview>(uid => new MapPreview(modData, uid, gridType.Value, this));
 			sheetBuilder = new SheetBuilder(SheetType.BGRA);
+
+			// Enumerate map directories
+			var mapLocations = new Dictionary<IReadOnlyPackage, MapClassification>();
+			foreach (var kv in modData.Manifest.MapFolders)
+			{
+				var name = kv.Key;
+				var classification = string.IsNullOrEmpty(kv.Value)
+					? MapClassification.Unknown : Enum<MapClassification>.Parse(kv.Value);
+
+				IReadOnlyPackage package;
+				var optional = name.StartsWith("~");
+				if (optional)
+					name = name.Substring(1);
+
+				try
+				{
+					package = modData.ModFiles.OpenPackage(name);
+				}
+				catch
+				{
+					if (optional)
+						continue;
+
+					throw;
+				}
+
+				mapLocations.Add(package, classification);
+			}
+
+			MapLocations = new ReadOnlyDictionary<IReadOnlyPackage, MapClassification>(mapLocations);
 		}
 
 		public void LoadMaps()
 		{
-			// Expand the dictionary (dir path, dir type) to a dictionary of (map path, dir type)
-			var mapPaths = modData.Manifest.MapFolders.SelectMany(kv =>
-				FindMapsIn(kv.Key).ToDictionary(p => p, p => string.IsNullOrEmpty(kv.Value) ? MapClassification.Unknown : Enum<MapClassification>.Parse(kv.Value)));
+			// Utility mod that does not support maps
+			if (!modData.Manifest.Contains<MapGrid>())
+				return;
 
-			foreach (var path in mapPaths)
+			var mapGrid = Game.ModData.Manifest.Get<MapGrid>();
+			foreach (var kv in MapLocations)
 			{
-				try
+				foreach (var map in kv.Key.Contents)
 				{
-					using (new Support.PerfTimer(path.Key))
+					IReadOnlyPackage mapPackage = null;
+					try
 					{
-						var map = new Map(path.Key);
-						if (modData.Manifest.MapCompatibility.Contains(map.RequiresMod))
-							previews[map.Uid].UpdateFromMap(map, path.Value);
+						using (new Support.PerfTimer(map))
+						{
+							mapPackage = modData.ModFiles.OpenPackage(map, kv.Key);
+							if (mapPackage == null)
+								continue;
+
+							var uid = Map.ComputeUID(mapPackage);
+							previews[uid].UpdateFromMap(mapPackage, kv.Key, kv.Value, modData.Manifest.MapCompatibility, mapGrid.Type);
+						}
 					}
-				}
-				catch (Exception e)
-				{
-					Console.WriteLine("Failed to load map: {0}", path);
-					Console.WriteLine("Details: {0}", e);
-					Log.Write("debug", "Failed to load map: {0}", path);
-					Log.Write("debug", "Details: {0}", e);
+					catch (Exception e)
+					{
+						if (mapPackage != null)
+							mapPackage.Dispose();
+						Console.WriteLine("Failed to load map: {0}", map);
+						Console.WriteLine("Details: {0}", e);
+						Log.Write("debug", "Failed to load map: {0}", map);
+						Log.Write("debug", "Details: {0}", e);
+					}
 				}
 			}
 		}
@@ -111,25 +155,6 @@ namespace OpenRA
 			new Download(url, _ => { }, onInfoComplete);
 		}
 
-		public static IEnumerable<string> FindMapsIn(string dir)
-		{
-			string[] noMaps = { };
-
-			// Ignore optional flag
-			if (dir.StartsWith("~"))
-				dir = dir.Substring(1);
-
-			dir = Platform.ResolvePath(dir);
-
-			if (!Directory.Exists(dir))
-				return noMaps;
-
-			var dirsWithMaps = Directory.GetDirectories(dir)
-				.Where(d => Directory.GetFiles(d, "map.yaml").Any() && Directory.GetFiles(d, "map.bin").Any());
-
-			return dirsWithMaps.Concat(Directory.GetFiles(dir, "*.oramap"));
-		}
-
 		void LoadAsyncInternal()
 		{
 			Log.Write("debug", "MapCache.LoadAsyncInternal started");
@@ -168,27 +193,8 @@ namespace OpenRA
 				// Render the minimap into the shared sheet
 				foreach (var p in todo)
 				{
-					// The rendering is thread safe because it only reads from the passed instances and writes to a new bitmap
-					var createdPreview = false;
-					var bitmap = p.CustomPreview;
-					if (bitmap == null)
-					{
-						createdPreview = true;
-						bitmap = Minimap.RenderMapPreview(modData.DefaultRules.TileSets[p.Map.Tileset], p.Map, modData.DefaultRules, true);
-					}
-
-					Game.RunAfterTick(() =>
-					{
-						try
-						{
-							p.SetMinimap(sheetBuilder.Add(bitmap));
-						}
-						finally
-						{
-							if (createdPreview)
-								bitmap.Dispose();
-						}
-					});
+					if (p.Preview != null)
+						Game.RunAfterTick(() => p.SetMinimap(sheetBuilder.Add(p.Preview)));
 
 					// Yuck... But this helps the UI Jank when opening the map selector significantly.
 					Thread.Sleep(Environment.ProcessorCount == 1 ? 25 : 5);
@@ -253,6 +259,9 @@ namespace OpenRA
 				sheetBuilder.Dispose();
 				return;
 			}
+
+			foreach (var p in previews.Values)
+				p.Dispose();
 
 			// We need to let the loader thread exit before we can dispose our sheet builder.
 			// Ideally we should dispose our resources before returning, but we don't to block waiting on the loader thread to exit.

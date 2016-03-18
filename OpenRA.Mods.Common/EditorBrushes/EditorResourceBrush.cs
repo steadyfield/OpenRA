@@ -1,10 +1,11 @@
 ﻿#region Copyright & License Information
 /*
- * Copyright 2007-2015 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2016 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
- * as published by the Free Software Foundation. For more information,
- * see COPYING.
+ * as published by the Free Software Foundation, either version 3 of
+ * the License, or (at your option) any later version. For more
+ * information, see COPYING.
  */
 #endregion
 
@@ -36,8 +37,7 @@ namespace OpenRA.Mods.Common.Widgets
 			preview.IsVisible = () => editorWidget.CurrentBrush == this;
 
 			var variant = resource.Variants.FirstOrDefault();
-			var sequenceProvider = wr.World.Map.Rules.Sequences[world.TileSet.Id];
-			var sequence = sequenceProvider.GetSequence("resources", variant);
+			var sequence = wr.World.Map.Rules.Sequences.GetSequence("resources", variant);
 			var sprite = sequence.GetSprite(resource.MaxDensity - 1);
 			preview.GetSprite = () => sprite;
 
@@ -82,11 +82,11 @@ namespace OpenRA.Mods.Common.Widgets
 				return false;
 
 			var tile = world.Map.MapTiles.Value[cell];
-			var tileInfo = world.TileSet.GetTileInfo(tile);
+			var tileInfo = world.Map.Rules.TileSet.GetTileInfo(tile);
 			if (tileInfo == null)
 				return false;
 
-			var terrainType = world.TileSet.TerrainInfo[tileInfo.TerrainType];
+			var terrainType = world.Map.Rules.TileSet.TerrainInfo[tileInfo.TerrainType];
 
 			if (mapResources[cell].Type == ResourceType.ResourceType)
 				return false;

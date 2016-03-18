@@ -1,10 +1,11 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2015 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2016 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
- * as published by the Free Software Foundation. For more information,
- * see COPYING.
+ * as published by the Free Software Foundation, either version 3 of
+ * the License, or (at your option) any later version. For more
+ * information, see COPYING.
  */
 #endregion
 
@@ -70,8 +71,8 @@ namespace OpenRA
 		[Desc("Automatically restart when a game ends. Disable this when something else already takes care about it.")]
 		public bool DedicatedLoop = true;
 
-		[Desc("Disallow AI bots.")]
-		public bool LockBots = false;
+		[Desc("Disallow games where only one player plays with bots.")]
+		public bool DisableSinglePlayer = false;
 
 		public string TimestampFormat = "s";
 
@@ -91,6 +92,8 @@ namespace OpenRA
 		public bool SanityCheckUnsyncedCode = false;
 		public int Samples = 25;
 		public bool IgnoreVersionMismatch = false;
+		public bool SendSystemInformation = true;
+		public string UUID = System.Guid.NewGuid().ToString();
 	}
 
 	public class GraphicSettings
@@ -174,8 +177,11 @@ namespace OpenRA
 		public bool AllowDownloading = true;
 		public string MapRepository = "http://resource.openra.net/map/";
 
+		public bool AllowZoom = true;
+		public Modifiers ZoomModifier = Modifiers.Ctrl;
+
 		public bool FetchNews = true;
-		public string NewsUrl = "http://www.openra.net/gamenews";
+		public string NewsUrl = "http://master.openra.net/gamenews";
 	}
 
 	public class KeySettings

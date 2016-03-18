@@ -1,4 +1,4 @@
-MapFormat: 8
+MapFormat: 10
 
 RequiresMod: ra
 
@@ -15,10 +15,6 @@ Bounds: 15,10,105,114
 Visibility: Lobby
 
 Type: Conquest
-
-Videos:
-
-Options:
 
 Players:
 	PlayerReference@Neutral:
@@ -884,32 +880,4 @@ Actors:
 		Location: 121,96
 		Owner: Creeps
 
-Smudges:
-
-Rules:
-	OILB.Strong:
-		Inherits: OILB
-		Health:
-			HP: 6000
-		RenderSprites:
-			Image: OILB
-	OILB.Weak:
-		Inherits: OILB
-		Health:
-			HP: 900
-		RenderSprites:
-			Image: OILB
-
-Sequences:
-
-VoxelSequences:
-
-Weapons:
-
-Voices:
-
-Music:
-
-Notifications:
-
-Translations:
+Rules: rules.yaml

@@ -1,10 +1,11 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2015 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2016 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
- * as published by the Free Software Foundation. For more information,
- * see COPYING.
+ * as published by the Free Software Foundation, either version 3 of
+ * the License, or (at your option) any later version. For more
+ * information, see COPYING.
  */
 #endregion
 
@@ -56,6 +57,12 @@ namespace OpenRA.Mods.Common.Traits
 
 		[Desc("Search radius (in cells) from the last harvest order location to find more resources.")]
 		public readonly int SearchFromOrderRadius = 12;
+
+		[Desc("Maximum duration of being idle before queueing a Wait activity.")]
+		public readonly int MaxIdleDuration = 25;
+
+		[Desc("Duration to wait before becoming idle again.")]
+		public readonly int WaitDuration = 25;
 
 		[VoiceReference] public readonly string HarvestVoice = "Action";
 		[VoiceReference] public readonly string DeliverVoice = "Action";
@@ -215,17 +222,6 @@ namespace OpenRA.Mods.Common.Traits
 					var moveTo = mobile.NearestMoveableCell(unblockCell, 1, 5);
 					self.QueueActivity(mobile.MoveTo(moveTo, 1));
 					self.SetTargetLine(Target.FromCell(self.World, moveTo), Color.Gray, false);
-
-					var territory = self.World.WorldActor.TraitOrDefault<ResourceClaimLayer>();
-					if (territory != null)
-						territory.ClaimResource(self, moveTo);
-
-					var notify = self.TraitsImplementing<INotifyHarvesterAction>();
-					var next = new FindResources(self);
-					foreach (var n in notify)
-						n.MovingToResources(self, moveTo, next);
-
-					self.QueueActivity(next);
 				}
 			}
 		}
@@ -250,6 +246,7 @@ namespace OpenRA.Mods.Common.Traits
 			}
 		}
 
+		int idleDuration;
 		public void TickIdle(Actor self)
 		{
 			// Should we be intelligent while idle?
@@ -263,9 +260,16 @@ namespace OpenRA.Mods.Common.Traits
 			}
 
 			UnblockRefinery(self);
+			idleDuration += 1;
 
-			// Wait for a bit before becoming idle again:
-			self.QueueActivity(new Wait(10));
+			// Wait a bit before queueing Wait activity
+			if (idleDuration > Info.MaxIdleDuration)
+			{
+				idleDuration = 0;
+
+				// Wait for a bit before becoming idle again:
+				self.QueueActivity(new Wait(Info.WaitDuration));
+			}
 		}
 
 		// Returns true when unloading is complete

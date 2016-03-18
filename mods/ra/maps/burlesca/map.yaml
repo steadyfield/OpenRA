@@ -1,4 +1,4 @@
-MapFormat: 8
+MapFormat: 10
 
 RequiresMod: ra
 
@@ -15,10 +15,6 @@ Bounds: 4,4,56,56
 Visibility: Lobby
 
 Type: Conquest
-
-Videos:
-
-Options:
 
 Players:
 	PlayerReference@Neutral:
@@ -213,21 +209,3 @@ Actors:
 	Actor54: mine
 		Location: 6,19
 		Owner: Neutral
-
-Smudges:
-
-Rules:
-
-Sequences:
-
-VoxelSequences:
-
-Weapons:
-
-Voices:
-
-Music:
-
-Notifications:
-
-Translations:

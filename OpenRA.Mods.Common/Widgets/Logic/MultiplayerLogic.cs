@@ -1,10 +1,11 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2015 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2016 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
- * as published by the Free Software Foundation. For more information,
- * see COPYING.
+ * as published by the Free Software Foundation, either version 3 of
+ * the License, or (at your option) any later version. For more
+ * information, see COPYING.
  */
 #endregion
 
@@ -35,6 +36,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 		readonly Color incompatibleGameStartedColor;
 		readonly Color gameStartedColor;
 		readonly Color incompatibleGameColor;
+		readonly ModData modData;
 
 		GameServer currentServer;
 		MapPreview currentMap;
@@ -67,8 +69,9 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 		}
 
 		[ObjectCreator.UseCtor]
-		public MultiplayerLogic(Widget widget, Action onStart, Action onExit, string directConnectHost, int directConnectPort)
+		public MultiplayerLogic(Widget widget, ModData modData, Action onStart, Action onExit, string directConnectHost, int directConnectPort)
 		{
+			this.modData = modData;
 			this.onStart = onStart;
 			this.onExit = onExit;
 
@@ -320,7 +323,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 				return 0;
 
 			// Games for the current mod+version are sorted first
-			if (testEntry.ModId == Game.ModData.Manifest.Mod.Id)
+			if (testEntry.ModId == modData.Manifest.Mod.Id)
 				return 2;
 
 			// Followed by games for different mods that are joinable
@@ -330,7 +333,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 		void SelectServer(GameServer server)
 		{
 			currentServer = server;
-			currentMap = server != null ? Game.ModData.MapCache[server.Map] : null;
+			currentMap = server != null ? modData.MapCache[server.Map] : null;
 		}
 
 		void RefreshServerListInner(IEnumerable<GameServer> games)
@@ -437,7 +440,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 
 				// Search for any unknown maps
 				if (Game.Settings.Game.AllowDownloading)
-					Game.ModData.MapCache.QueryRemoteMapDetails(games.Where(g => !Filtered(g)).Select(g => g.Map));
+					modData.MapCache.QueryRemoteMapDetails(games.Where(g => !Filtered(g)).Select(g => g.Map));
 
 				foreach (var row in rows)
 					serverList.AddChild(row);

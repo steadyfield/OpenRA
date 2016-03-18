@@ -1,10 +1,11 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2015 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2016 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
- * as published by the Free Software Foundation. For more information,
- * see COPYING.
+ * as published by the Free Software Foundation, either version 3 of
+ * the License, or (at your option) any later version. For more
+ * information, see COPYING.
  */
 #endregion
 
@@ -16,16 +17,6 @@ namespace OpenRA.FileSystem
 	public sealed class Folder : IReadWritePackage
 	{
 		readonly string path;
-
-		// Create a new folder package
-		public Folder(string path, Dictionary<string, byte[]> contents)
-		{
-			this.path = path;
-			if (Directory.Exists(path))
-				Directory.Delete(path, true);
-
-			Write(contents);
-		}
 
 		public Folder(string path)
 		{
@@ -42,6 +33,8 @@ namespace OpenRA.FileSystem
 			{
 				foreach (var filename in Directory.GetFiles(path, "*", SearchOption.TopDirectoryOnly))
 					yield return Path.GetFileName(filename);
+				foreach (var filename in Directory.GetDirectories(path))
+					yield return Path.GetFileName(filename);
 			}
 		}
 
@@ -53,18 +46,31 @@ namespace OpenRA.FileSystem
 
 		public bool Contains(string filename)
 		{
-			return File.Exists(Path.Combine(path, filename));
+			var combined = Path.Combine(path, filename);
+			return combined.StartsWith(path) && File.Exists(combined);
 		}
 
-		public void Write(Dictionary<string, byte[]> contents)
+		public void Update(string filename, byte[] contents)
 		{
 			if (!Directory.Exists(path))
 				Directory.CreateDirectory(path);
 
-			foreach (var file in contents)
-				using (var dataStream = File.Create(Path.Combine(path, file.Key)))
-				using (var writer = new BinaryWriter(dataStream))
-					writer.Write(file.Value);
+			using (var s = File.Create(Path.Combine(path, filename)))
+				s.Write(contents, 0, contents.Length);
+		}
+
+		public void Delete(string filename)
+		{
+			// HACK: ZipFiles can't be loaded as read-write from a stream, so we are
+			// forced to bypass the parent package and load them with their full path
+			// in FileSystem.OpenPackage.  Their internal name therefore contains the
+			// full parent path too.  We need to be careful to not add a second path
+			// prefix to these hacked packages.
+			var filePath = filename.StartsWith(path) ? filename : Path.Combine(path, filename);
+			if (Directory.Exists(filePath))
+				Directory.Delete(filePath, true);
+			else if (File.Exists(filePath))
+				File.Delete(filePath);
 		}
 
 		public void Dispose() { }

@@ -121,7 +121,6 @@
     <Compile Include="Graphics\CursorSequence.cs" />
     <Compile Include="Graphics\HardwarePalette.cs" />
     <Compile Include="Graphics\MappedImage.cs" />
-    <Compile Include="Graphics\Minimap.cs" />
     <Compile Include="Graphics\SequenceProvider.cs" />
     <Compile Include="Graphics\Sheet.cs" />
     <Compile Include="Graphics\SheetBuilder.cs" />
@@ -216,7 +215,6 @@
     <Compile Include="Primitives\ReadOnlyList.cs" />
     <Compile Include="ModMetadata.cs" />
     <Compile Include="GameRules\Ruleset.cs" />
-    <Compile Include="GameRules\RulesetCache.cs" />
     <Compile Include="Support\MersenneTwister.cs" />
     <Compile Include="GameInformation.cs" />
     <Compile Include="Map\CellLayer.cs" />
@@ -255,6 +253,7 @@
     <Compile Include="Graphics\RgbaColorRenderer.cs" />
     <Compile Include="Traits\Player\IndexedPlayerPalette.cs" />
     <Compile Include="Traits\ActivityUtils.cs" />
+    <Compile Include="FileSystem\ZipFolder.cs" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="FileSystem\D2kSoundResources.cs" />

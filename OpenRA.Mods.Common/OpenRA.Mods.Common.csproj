@@ -139,7 +139,6 @@
     <Compile Include="AI\AttackOrFleeFuzzy.cs" />
     <Compile Include="AI\BaseBuilder.cs" />
     <Compile Include="AI\HackyAI.cs" />
-    <Compile Include="AI\RushFuzzy.cs" />
     <Compile Include="AI\Squad.cs" />
     <Compile Include="AI\StateMachine.cs" />
     <Compile Include="AI\States\AirStates.cs" />
@@ -300,6 +299,7 @@
     <Compile Include="Traits\Burns.cs" />
     <Compile Include="Traits\C4Demolition.cs" />
     <Compile Include="Traits\Health.cs" />
+    <Compile Include="Traits\Player\InsufficientFundsWarning.cs" />
     <Compile Include="Traits\PowerTooltip.cs" />
     <Compile Include="Traits\VeteranProductionIconOverlay.cs" />
     <Compile Include="Traits\Capturable.cs" />
@@ -543,7 +543,6 @@
     <Compile Include="UtilityCommands\ExtractLuaDocsCommand.cs" />
     <Compile Include="UtilityCommands\ExtractTraitDocsCommand.cs" />
     <Compile Include="WorldExtensions.cs" />
-    <Compile Include="UtilityCommands\GenerateMinimapCommand.cs" />
     <Compile Include="UtilityCommands\GetMapHashCommand.cs" />
     <Compile Include="UtilityCommands\Glob.cs" />
     <Compile Include="UtilityCommands\ImportLegacyMapCommand.cs" />
@@ -581,7 +580,6 @@
     <Compile Include="Widgets\Logic\Ingame\ClassicProductionLogic.cs" />
     <Compile Include="Widgets\Logic\Ingame\ControlGroupLogic.cs" />
     <Compile Include="Widgets\Logic\Ingame\DebugMenuLogic.cs" />
-    <Compile Include="Widgets\Logic\Ingame\DiplomacyLogic.cs" />
     <Compile Include="Widgets\Logic\Ingame\GameInfoBriefingLogic.cs" />
     <Compile Include="Widgets\Logic\Ingame\GameInfoLogic.cs" />
     <Compile Include="Widgets\Logic\Ingame\GameInfoObjectivesLogic.cs" />
@@ -732,6 +730,11 @@
     <Compile Include="Util.cs" />
     <Compile Include="Traits\Render\WithGateSpriteBody.cs" />
     <Compile Include="ColorValidator.cs" />
+    <Compile Include="UtilityCommands\ResizeMapCommand.cs" />
+    <Compile Include="Traits\World\MapCreeps.cs" />
+    <Compile Include="Traits\World\MapBuildRadius.cs" />
+    <Compile Include="Traits\World\MapOptions.cs" />
+    <Compile Include="Traits\World\MissionData.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>

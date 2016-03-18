@@ -1,10 +1,8 @@
-MapFormat: 8
+MapFormat: 10
 
 RequiresMod: cnc
 
 Title: shellmap
-
-Description: CNC Shellmap
 
 Author: Chris Forbes
 
@@ -17,10 +15,6 @@ Bounds: 8,1,80,45
 Visibility: Shellmap
 
 Type: Shellmap
-
-Videos:
-
-Options:
 
 Players:
 	PlayerReference@Nod:
@@ -983,36 +977,4 @@ Actors:
 		Owner: Nod
 		Facing: 192
 
-Smudges:
-
-Rules:
-	World:
-		-SpawnMPUnits:
-		-MPStartLocations:
-		-CrateSpawner:
-		MenuPaletteEffect:
-			Effect: Desaturated
-		LuaScript:
-			Scripts: shellmap.lua
-		MusicPlaylist:
-			BackgroundMusic: map1
-	LST:
-		Mobile:
-			Speed: 42
-	BOAT:
-		Mobile:
-			Speed: 42
-
-Sequences:
-
-VoxelSequences:
-
-Weapons:
-
-Voices:
-
-Music:
-
-Notifications:
-
-Translations:
+Rules: rules.yaml

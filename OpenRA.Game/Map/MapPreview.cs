@@ -1,10 +1,11 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2015 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2016 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
- * as published by the Free Software Foundation. For more information,
- * see COPYING.
+ * as published by the Free Software Foundation, either version 3 of
+ * the License, or (at your option) any later version. For more
+ * information, see COPYING.
  */
 #endregion
 
@@ -17,6 +18,7 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Threading;
+using OpenRA.FileSystem;
 using OpenRA.Graphics;
 
 namespace OpenRA
@@ -51,26 +53,34 @@ namespace OpenRA
 		public readonly bool downloading;
 	}
 
-	public class MapPreview
+	public class MapPreview : IDisposable, IReadOnlyFileSystem
 	{
 		static readonly CPos[] NoSpawns = new CPos[] { };
 		MapCache cache;
+		ModData modData;
 
 		public readonly string Uid;
+		public IReadOnlyPackage Package { get; private set; }
+		IReadOnlyPackage parentPackage;
+
 		public string Title { get; private set; }
 		public string Type { get; private set; }
 		public string Author { get; private set; }
+		public string TileSet { get; private set; }
+		public MapPlayers Players { get; private set; }
 		public int PlayerCount { get; private set; }
 		public CPos[] SpawnPoints { get; private set; }
 		public MapGridType GridType { get; private set; }
 		public Rectangle Bounds { get; private set; }
-		public Bitmap CustomPreview { get; private set; }
-		public Map Map { get; private set; }
+		public Bitmap Preview { get; private set; }
 		public MapStatus Status { get; private set; }
 		public MapClassification Class { get; private set; }
+		public MapVisibility Visibility { get; private set; }
 		public bool SuitableForInitialMap { get; private set; }
 
-		public MapRuleStatus RuleStatus { get; private set; }
+		Lazy<Ruleset> rules;
+		public Ruleset Rules { get { return rules != null ? rules.Value : null; } }
+		public bool InvalidCustomRules { get; private set; }
 
 		Download download;
 		public long DownloadBytes { get; private set; }
@@ -92,15 +102,17 @@ namespace OpenRA
 			return null;
 		}
 
-		public void SetMinimap(Sprite minimap)
+		internal void SetMinimap(Sprite minimap)
 		{
 			this.minimap = minimap;
 			generatingMinimap = false;
 		}
 
-		public MapPreview(string uid, MapGridType gridType, MapCache cache)
+		public MapPreview(ModData modData, string uid, MapGridType gridType, MapCache cache)
 		{
 			this.cache = cache;
+			this.modData = modData;
+
 			Uid = uid;
 			Title = "Unknown Map";
 			Type = "Unknown";
@@ -111,31 +123,130 @@ namespace OpenRA
 			GridType = gridType;
 			Status = MapStatus.Unavailable;
 			Class = MapClassification.Unknown;
+			Visibility = MapVisibility.Lobby;
 		}
 
-		public void UpdateFromMap(Map m, MapClassification classification)
+		public void UpdateFromMap(IReadOnlyPackage p, IReadOnlyPackage parent, MapClassification classification, string[] mapCompatibility, MapGridType gridType)
 		{
-			Map = m;
-			Title = m.Title;
-			Type = m.Type;
-			Type = m.Type;
-			Author = m.Author;
-			Bounds = m.Bounds;
-			SpawnPoints = m.SpawnPoints.Value;
-			GridType = m.Grid.Type;
-			CustomPreview = m.CustomPreview;
-			Status = MapStatus.Available;
+			Dictionary<string, MiniYaml> yaml;
+			using (var yamlStream = p.GetStream("map.yaml"))
+			{
+				if (yamlStream == null)
+					throw new FileNotFoundException("Required file map.yaml not present in this map");
+
+				yaml = new MiniYaml(null, MiniYaml.FromStream(yamlStream, "map.yaml")).ToDictionary();
+			}
+
+			Package = p;
+			parentPackage = parent;
+			GridType = gridType;
 			Class = classification;
 
-			var players = new MapPlayers(m.PlayerDefinitions).Players;
-			PlayerCount = players.Count(x => x.Value.Playable);
+			MiniYaml temp;
+			if (yaml.TryGetValue("MapFormat", out temp))
+			{
+				var format = FieldLoader.GetValue<int>("MapFormat", temp.Value);
+				if (format != Map.SupportedMapFormat)
+					throw new InvalidDataException("Map format {0} is not supported.".F(format));
+			}
 
-			SuitableForInitialMap = EvaluateUserFriendliness(players);
+			if (yaml.TryGetValue("Title", out temp))
+				Title = temp.Value;
+			if (yaml.TryGetValue("Type", out temp))
+				Type = temp.Value;
+			if (yaml.TryGetValue("Tileset", out temp))
+				TileSet = temp.Value;
+			if (yaml.TryGetValue("Author", out temp))
+				Author = temp.Value;
+			if (yaml.TryGetValue("Bounds", out temp))
+				Bounds = FieldLoader.GetValue<Rectangle>("Bounds", temp.Value);
+			if (yaml.TryGetValue("Visibility", out temp))
+				Visibility = FieldLoader.GetValue<MapVisibility>("Visibility", temp.Value);
+
+			string requiresMod = string.Empty;
+			if (yaml.TryGetValue("RequiresMod", out temp))
+				requiresMod = temp.Value;
+
+			Status = mapCompatibility == null || mapCompatibility.Contains(requiresMod) ? MapStatus.Available : MapStatus.Unavailable;
+
+			try
+			{
+				// Actor definitions may change if the map format changes
+				MiniYaml actorDefinitions;
+				if (yaml.TryGetValue("Actors", out actorDefinitions))
+				{
+					var spawns = new List<CPos>();
+					foreach (var kv in actorDefinitions.Nodes.Where(d => d.Value.Value == "mpspawn"))
+					{
+						var s = new ActorReference(kv.Value.Value, kv.Value.ToDictionary());
+						spawns.Add(s.InitDict.Get<LocationInit>().Value(null));
+					}
+
+					SpawnPoints = spawns.ToArray();
+				}
+				else
+					SpawnPoints = new CPos[0];
+			}
+			catch (Exception)
+			{
+				SpawnPoints = new CPos[0];
+				Status = MapStatus.Unavailable;
+			}
+
+			try
+			{
+				// Player definitions may change if the map format changes
+				MiniYaml playerDefinitions;
+				if (yaml.TryGetValue("Players", out playerDefinitions))
+				{
+					Players = new MapPlayers(playerDefinitions.Nodes);
+					PlayerCount = Players.Players.Count(x => x.Value.Playable);
+					SuitableForInitialMap = EvaluateUserFriendliness(Players.Players);
+				}
+			}
+			catch (Exception)
+			{
+				Status = MapStatus.Unavailable;
+			}
+
+			rules = Exts.Lazy(() =>
+			{
+				try
+				{
+					var ruleDefinitions = LoadRuleSection(yaml, "Rules");
+					var weaponDefinitions = LoadRuleSection(yaml, "Weapons");
+					var voiceDefinitions = LoadRuleSection(yaml, "Voices");
+					var musicDefinitions = LoadRuleSection(yaml, "Music");
+					var notificationDefinitions = LoadRuleSection(yaml, "Notifications");
+					var sequenceDefinitions = LoadRuleSection(yaml, "Sequences");
+					return Ruleset.Load(modData, this, TileSet, ruleDefinitions, weaponDefinitions,
+						voiceDefinitions, notificationDefinitions, musicDefinitions, sequenceDefinitions);
+				}
+				catch
+				{
+					InvalidCustomRules = true;
+				}
+
+				return Ruleset.LoadDefaultsForTileSet(modData, TileSet);
+			});
+
+			if (p.Contains("map.png"))
+				using (var dataStream = p.GetStream("map.png"))
+					Preview = new Bitmap(dataStream);
+		}
+
+		MiniYaml LoadRuleSection(Dictionary<string, MiniYaml> yaml, string section)
+		{
+			MiniYaml node;
+			if (!yaml.TryGetValue(section, out node))
+				return null;
+
+			return node;
 		}
 
 		bool EvaluateUserFriendliness(Dictionary<string, PlayerReference> players)
 		{
-			if (Status != MapStatus.Available || !Map.Visibility.HasFlag(MapVisibility.Lobby))
+			if (Status != MapStatus.Available || !Visibility.HasFlag(MapVisibility.Lobby))
 				return false;
 
 			// Other map types may have confusing settings or gameplay
@@ -168,7 +279,6 @@ namespace OpenRA
 						if (!r.downloading)
 						{
 							Status = MapStatus.Unavailable;
-							RuleStatus = MapRuleStatus.Invalid;
 							return;
 						}
 
@@ -184,11 +294,11 @@ namespace OpenRA
 						SpawnPoints = spawns;
 						GridType = r.map_grid_type;
 
-						CustomPreview = new Bitmap(new MemoryStream(Convert.FromBase64String(r.minimap)));
+						Preview = new Bitmap(new MemoryStream(Convert.FromBase64String(r.minimap)));
 					}
 					catch (Exception) { }
 
-					if (CustomPreview != null)
+					if (Preview != null)
 						cache.CacheMinimap(this);
 				}
 
@@ -203,18 +313,22 @@ namespace OpenRA
 				return;
 
 			Status = MapStatus.Downloading;
-			var baseMapPath = Platform.ResolvePath("^", "maps", Game.ModData.Manifest.Mod.Id);
+			var installLocation = cache.MapLocations.FirstOrDefault(p => p.Value == MapClassification.User);
+			if (installLocation.Key == null || !(installLocation.Key is IReadWritePackage))
+			{
+				Log.Write("debug", "Map install directory not found");
+				Status = MapStatus.DownloadError;
+				return;
+			}
 
-			// Create the map directory if it doesn't exist
-			if (!Directory.Exists(baseMapPath))
-				Directory.CreateDirectory(baseMapPath);
-
+			var mapInstallPackage = installLocation.Key as IReadWritePackage;
+			var modData = Game.ModData;
 			new Thread(() =>
 			{
 				// Request the filename from the server
 				// Run in a worker thread to avoid network delays
 				var mapUrl = Game.Settings.Game.MapRepository + Uid;
-				var mapPath = string.Empty;
+				var mapFilename = string.Empty;
 				try
 				{
 					var request = WebRequest.Create(mapUrl);
@@ -228,11 +342,11 @@ namespace OpenRA
 							return;
 						}
 
-						mapPath = Path.Combine(baseMapPath, res.Headers["Content-Disposition"].Replace("attachment; filename = ", ""));
+						mapFilename = res.Headers["Content-Disposition"].Replace("attachment; filename = ", "");
 					}
 
 					Action<DownloadProgressChangedEventArgs> onDownloadProgress = i => { DownloadBytes = i.BytesReceived; DownloadPercentage = i.ProgressPercentage; };
-					Action<AsyncCompletedEventArgs, bool> onDownloadComplete = (i, cancelled) =>
+					Action<DownloadDataCompletedEventArgs, bool> onDownloadComplete = (i, cancelled) =>
 					{
 						download = null;
 
@@ -245,15 +359,16 @@ namespace OpenRA
 							return;
 						}
 
-						Log.Write("debug", "Downloaded map to '{0}'", mapPath);
+						mapInstallPackage.Update(mapFilename, i.Result);
+						Log.Write("debug", "Downloaded map to '{0}'", mapFilename);
 						Game.RunAfterTick(() =>
 						{
-							UpdateFromMap(new Map(mapPath), MapClassification.User);
-							CacheRules();
+							var package = modData.ModFiles.OpenPackage(mapFilename, mapInstallPackage);
+							UpdateFromMap(package, mapInstallPackage, MapClassification.User, null, GridType);
 						});
 					};
 
-					download = new Download(mapUrl, mapPath, onDownloadProgress, onDownloadComplete);
+					download = new Download(mapUrl, onDownloadProgress, onDownloadComplete);
 				}
 				catch (Exception e)
 				{
@@ -272,19 +387,63 @@ namespace OpenRA
 			download = null;
 		}
 
-		public void CacheRules()
-		{
-			if (RuleStatus != MapRuleStatus.Unknown)
-				return;
-
-			Map.PreloadRules();
-			RuleStatus = Map.InvalidCustomRules ? MapRuleStatus.Invalid : MapRuleStatus.Cached;
-		}
-
 		public void Invalidate()
 		{
 			Status = MapStatus.Unavailable;
-			RuleStatus = MapRuleStatus.Unknown;
+		}
+
+		public void Dispose()
+		{
+			if (Package != null)
+			{
+				Package.Dispose();
+				Package = null;
+			}
+		}
+
+		public void Delete()
+		{
+			Invalidate();
+			var deleteFromPackage = parentPackage as IReadWritePackage;
+			if (deleteFromPackage != null)
+				deleteFromPackage.Delete(Package.Name);
+		}
+
+		Stream IReadOnlyFileSystem.Open(string filename)
+		{
+			// Explicit package paths never refer to a map
+			if (!filename.Contains("|") && Package.Contains(filename))
+				return Package.GetStream(filename);
+
+			return modData.DefaultFileSystem.Open(filename);
+		}
+
+		bool IReadOnlyFileSystem.TryGetPackageContaining(string path, out IReadOnlyPackage package, out string filename)
+		{
+			// Packages aren't supported inside maps
+			return modData.DefaultFileSystem.TryGetPackageContaining(path, out package, out filename);
+		}
+
+		bool IReadOnlyFileSystem.TryOpen(string filename, out Stream s)
+		{
+			// Explicit package paths never refer to a map
+			if (!filename.Contains("|"))
+			{
+				s = Package.GetStream(filename);
+				if (s != null)
+					return true;
+			}
+
+			return modData.DefaultFileSystem.TryOpen(filename, out s);
+		}
+
+		bool IReadOnlyFileSystem.Exists(string filename)
+		{
+			// Explicit package paths never refer to a map
+			if (!filename.Contains("|") && Package.Contains(filename))
+				return true;
+
+			return modData.DefaultFileSystem.Exists(filename);
 		}
 	}
 }

@@ -1,10 +1,11 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2015 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2016 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
- * as published by the Free Software Foundation. For more information,
- * see COPYING.
+ * as published by the Free Software Foundation, either version 3 of
+ * the License, or (at your option) any later version. For more
+ * information, see COPYING.
  */
 #endregion
 
@@ -231,8 +232,6 @@ namespace OpenRA.Mods.Common.AI
 
 		BitArray resourceTypeIndices;
 
-		RushFuzzy rushFuzzy = new RushFuzzy();
-
 		Cache<Player, Enemy> aggro = new Cache<Player, Enemy>(_ => new Enemy());
 		List<BaseBuilder> builders = new List<BaseBuilder>();
 
@@ -309,9 +308,10 @@ namespace OpenRA.Mods.Common.AI
 			attackForceTicks = Random.Next(0, Info.AttackForceInterval);
 			minAttackForceDelayTicks = Random.Next(0, Info.MinimumAttackForceDelay);
 
-			resourceTypeIndices = new BitArray(World.TileSet.TerrainInfo.Length); // Big enough
+			var tileset = World.Map.Rules.TileSet;
+			resourceTypeIndices = new BitArray(tileset.TerrainInfo.Length); // Big enough
 			foreach (var t in Map.Rules.Actors["world"].TraitInfos<ResourceTypeInfo>())
-				resourceTypeIndices.Set(World.TileSet.GetTerrainIndex(t.TerrainType), true);
+				resourceTypeIndices.Set(tileset.GetTerrainIndex(t.TerrainType), true);
 		}
 
 		// TODO: Possibly give this a more generic name when terrain type is unhardcoded
@@ -673,7 +673,7 @@ namespace OpenRA.Mods.Common.AI
 		{
 			var harvInfo = harvester.Info.TraitInfo<HarvesterInfo>();
 			var mobileInfo = harvester.Info.TraitInfo<MobileInfo>();
-			var passable = (uint)mobileInfo.GetMovementClass(World.TileSet);
+			var passable = (uint)mobileInfo.GetMovementClass(World.Map.Rules.TileSet);
 
 			var path = pathfinder.FindPath(
 				PathSearch.Search(World, mobileInfo, harvester, true,
@@ -702,9 +702,7 @@ namespace OpenRA.Mods.Common.AI
 				{
 					var act = harvester.GetCurrentActivity();
 
-					// A Wait activity is technically idle:
-					if ((act.GetType() != typeof(Wait)) &&
-						(act.NextActivity == null || act.NextActivity.GetType() != typeof(FindResources)))
+					if (act.NextActivity == null || act.NextActivity.GetType() != typeof(FindResources))
 						continue;
 				}
 
@@ -776,7 +774,7 @@ namespace OpenRA.Mods.Common.AI
 				var enemies = World.FindActorsInCircle(b.CenterPosition, WDist.FromCells(Info.RushAttackScanRadius))
 					.Where(unit => Player.Stances[unit.Owner] == Stance.Enemy && unit.Info.HasTraitInfo<AttackBaseInfo>()).ToList();
 
-				if (rushFuzzy.CanAttack(ownUnits, enemies))
+				if (AttackOrFleeFuzzy.Rush.CanAttack(ownUnits, enemies))
 				{
 					var target = enemies.Any() ? enemies.Random(Random) : b;
 					var rush = GetSquadOfType(SquadType.Rush);

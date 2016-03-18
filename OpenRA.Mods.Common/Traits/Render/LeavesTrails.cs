@@ -1,10 +1,11 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2015 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2016 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
- * as published by the Free Software Foundation. For more information,
- * see COPYING.
+ * as published by the Free Software Foundation, either version 3 of
+ * the License, or (at your option) any later version. For more
+ * information, see COPYING.
  */
 #endregion
 
@@ -32,6 +33,9 @@ namespace OpenRA.Mods.Common.Traits
 		[Desc("Accepts values: Cell to draw the trail sprite in the center of the current cell,",
 			"CenterPosition to draw the trail sprite at the current position.")]
 		public readonly TrailType Type = TrailType.Cell;
+
+		[Desc("Should the trail be visible through fog.")]
+		public readonly bool VisibleThroughFog = false;
 
 		[Desc("Display a trail while stationary.")]
 		public readonly bool TrailWhileStationary = false;
@@ -76,7 +80,7 @@ namespace OpenRA.Mods.Common.Traits
 
 				if (Info.TerrainTypes.Contains(type) && !string.IsNullOrEmpty(Info.Image))
 					self.World.AddFrameEndTask(w => w.Add(new SpriteEffect(pos, self.World, Info.Image,
-						Info.Sequences.Random(Game.CosmeticRandom), Info.Palette)));
+						Info.Sequences.Random(Game.CosmeticRandom), Info.Palette, Info.VisibleThroughFog)));
 
 				cachedPosition = self.CenterPosition;
 				ticks = 0;

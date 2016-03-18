@@ -1,10 +1,8 @@
-MapFormat: 8
+MapFormat: 10
 
 RequiresMod: ts
 
 Title: Defend Crash Site
-
-Description: Whatever is contained in this craft, it is apparent that Nod doesn't want GDI to have it.
 
 Author: Westwood Studios
 
@@ -17,10 +15,6 @@ Bounds: 2,12,52,150
 Visibility: Shellmap
 
 Type: Shellmap
-
-Videos:
-
-Options:
 
 Players:
 	PlayerReference@Neutral:
@@ -1742,33 +1736,10 @@ Actors:
 		Owner: Neutral
 		Location: 111,13
 
-Smudges:
-
-Rules:
+Rules: rules.yaml
 	World:
-		-StartGameNotification:
-		-SpawnMPUnits:
-		-MPStartLocations:
-		MusicPlaylist:
-			BackgroundMusic: intro
 		GlobalLightingPaletteEffect:
 			Red: 1.1
 			Green: 1.1
 			Blue: 1
 			Ambient: 0.55
-		LuaScript:
-			Scripts: map.lua
-
-Sequences:
-
-VoxelSequences:
-
-Weapons:
-
-Voices:
-
-Music:
-
-Notifications:
-
-Translations:

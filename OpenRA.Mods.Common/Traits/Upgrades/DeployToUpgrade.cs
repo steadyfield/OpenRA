@@ -1,10 +1,11 @@
 ﻿#region Copyright & License Information
 /*
- * Copyright 2007-2015 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2016 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
- * as published by the Free Software Foundation. For more information,
- * see COPYING.
+ * as published by the Free Software Foundation, either version 3 of
+ * the License, or (at your option) any later version. For more
+ * information, see COPYING.
  */
 #endregion
 
@@ -157,9 +158,8 @@ namespace OpenRA.Mods.Common.Traits
 			if (!checkTerrainType)
 				return true;
 
-			var tileSet = self.World.TileSet;
 			var tiles = self.World.Map.MapTiles.Value;
-			var terrainType = tileSet[tileSet.GetTerrainIndex(tiles[self.Location])].Type;
+			var terrainType = self.World.Map.GetTerrainInfo(self.Location).Type;
 
 			return info.AllowedTerrainTypes.Contains(terrainType);
 		}
@@ -173,7 +173,7 @@ namespace OpenRA.Mods.Common.Traits
 			if (self.World.Map.Contains(self.Location))
 			{
 				var tile = self.World.Map.MapTiles.Value[self.Location];
-				var ti = self.World.TileSet.GetTileInfo(tile);
+				var ti = self.World.Map.Rules.TileSet.GetTileInfo(tile);
 				if (ti != null)
 					ramp = ti.RampType;
 			}

@@ -1,10 +1,11 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2015 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2016 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
- * as published by the Free Software Foundation. For more information,
- * see COPYING.
+ * as published by the Free Software Foundation, either version 3 of
+ * the License, or (at your option) any later version. For more
+ * information, see COPYING.
  */
 #endregion
 
@@ -15,8 +16,14 @@ namespace OpenRA.Traits
 {
 	public class PlayerResourcesInfo : ITraitInfo
 	{
+		[Desc("Starting cash options that are available in the lobby options.")]
 		public readonly int[] SelectableCash = { 2500, 5000, 10000, 20000 };
+
+		[Desc("Default starting cash option: should be one of the SelectableCash options.")]
 		public readonly int DefaultCash = 5000;
+
+		[Desc("Force the DefaultCash option by disabling changes in the lobby.")]
+		public readonly bool DefaultCashLocked = false;
 
 		public object Create(ActorInitializer init) { return new PlayerResources(init.Self, this); }
 	}

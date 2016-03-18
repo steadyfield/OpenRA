@@ -1,10 +1,11 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2015 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2016 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
- * as published by the Free Software Foundation. For more information,
- * see COPYING.
+ * as published by the Free Software Foundation, either version 3 of
+ * the License, or (at your option) any later version. For more
+ * information, see COPYING.
  */
 #endregion
 
@@ -13,6 +14,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
 using OpenRA.FileFormats;
+using OpenRA.FileSystem;
 using OpenRA.Primitives;
 
 namespace OpenRA.Graphics
@@ -37,6 +39,7 @@ namespace OpenRA.Graphics
 
 		readonly List<Vertex[]> vertices = new List<Vertex[]>();
 		readonly Cache<Pair<string, string>, Voxel> voxels;
+		readonly IReadOnlyFileSystem fileSystem;
 		IVertexBuffer<Vertex> vertexBuffer;
 		int totalVertexCount;
 		int cachedVertexCount;
@@ -57,8 +60,9 @@ namespace OpenRA.Graphics
 			return new SheetBuilder(SheetType.DualIndexed, allocate);
 		}
 
-		public VoxelLoader()
+		public VoxelLoader(IReadOnlyFileSystem fileSystem)
 		{
+			this.fileSystem = fileSystem;
 			voxels = new Cache<Pair<string, string>, Voxel>(LoadFile);
 			vertices = new List<Vertex[]>();
 			totalVertexCount = 0;
@@ -218,9 +222,9 @@ namespace OpenRA.Graphics
 		{
 			VxlReader vxl;
 			HvaReader hva;
-			using (var s = Game.ModData.ModFiles.Open(files.First + ".vxl"))
+			using (var s = fileSystem.Open(files.First + ".vxl"))
 				vxl = new VxlReader(s);
-			using (var s = Game.ModData.ModFiles.Open(files.Second + ".hva"))
+			using (var s = fileSystem.Open(files.Second + ".hva"))
 				hva = new HvaReader(s, files.Second + ".hva");
 			return new Voxel(this, vxl, hva);
 		}

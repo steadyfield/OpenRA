@@ -12,14 +12,14 @@ Rockets:
 		HorizontalRateOfTurn: 15
 		TrailImage: smokey
 		ContrailLength: 8
-		MaximumLaunchSpeed: 298
+		Speed: 298
 		RangeLimit: 20
 	Warhead@1Dam: SpreadDamage
 		Spread: 128
 		Damage: 35
 		ValidTargets: Ground, Air
 		Versus:
-			None: 50
+			None: 30
 			Wood: 85
 			Light: 100
 			Heavy: 100
@@ -28,8 +28,8 @@ Rockets:
 	Warhead@2Smu: LeaveSmudge
 		SmudgeType: Crater
 	Warhead@3Eff: CreateEffect
-		Explosion: small_frag
-		ImpactSound: xplos.aud
+		Explosions: small_frag
+		ImpactSounds: xplos.aud
 
 BikeRockets:
 	ReloadDelay: 50
@@ -46,7 +46,7 @@ BikeRockets:
 		HorizontalRateOfTurn: 10
 		TrailImage: smokey
 		ContrailLength: 8
-		MaximumLaunchSpeed: 213
+		Speed: 213
 		RangeLimit: 30
 	Warhead@1Dam: SpreadDamage
 		Spread: 128
@@ -62,8 +62,8 @@ BikeRockets:
 	Warhead@2Smu: LeaveSmudge
 		SmudgeType: Crater
 	Warhead@3Eff: CreateEffect
-		Explosion: small_frag
-		ImpactSound: xplos.aud
+		Explosions: small_frag
+		ImpactSounds: xplos.aud
 
 OrcaAGMissiles:
 	ReloadDelay: 12
@@ -81,7 +81,7 @@ OrcaAGMissiles:
 		HorizontalRateOfTurn: 20
 		TrailImage: smokey
 		ContrailLength: 8
-		MaximumLaunchSpeed: 256
+		Speed: 256
 		RangeLimit: 30
 	Warhead@1Dam: SpreadDamage
 		Spread: 128
@@ -96,8 +96,8 @@ OrcaAGMissiles:
 	Warhead@2Smu: LeaveSmudge
 		SmudgeType: Crater
 	Warhead@3Eff: CreateEffect
-		Explosion: small_frag
-		ImpactSound: xplos.aud
+		Explosions: small_frag
+		ImpactSounds: xplos.aud
 
 OrcaAAMissiles:
 	ReloadDelay: 12
@@ -115,7 +115,7 @@ OrcaAAMissiles:
 		HorizontalRateOfTurn: 20
 		TrailImage: smokey
 		ContrailLength: 8
-		MaximumLaunchSpeed: 298
+		Speed: 298
 		RangeLimit: 30
 	Warhead@1Dam: SpreadDamage
 		Spread: 128
@@ -128,8 +128,8 @@ OrcaAAMissiles:
 	Warhead@2Smu: LeaveSmudge
 		SmudgeType: Crater
 	Warhead@3Eff: CreateEffect
-		Explosion: small_frag
-		ImpactSound: xplos.aud
+		Explosions: small_frag
+		ImpactSounds: xplos.aud
 
 MammothMissiles:
 	ReloadDelay: 45
@@ -146,7 +146,7 @@ MammothMissiles:
 		HorizontalRateOfTurn: 20
 		TrailImage: smokey
 		ContrailLength: 8
-		MaximumLaunchSpeed: 341
+		Speed: 341
 		RangeLimit: 35
 	Warhead@1Dam: SpreadDamage
 		Spread: 298
@@ -161,12 +161,12 @@ MammothMissiles:
 	Warhead@2Smu: LeaveSmudge
 		SmudgeType: Crater
 	Warhead@3Eff: CreateEffect
-		Explosion: small_poof
-		ImpactSound: xplos.aud
+		Explosions: small_poof
+		ImpactSounds: xplos.aud
 		InvalidImpactTypes: Air, AirHit
 	Warhead@4EffAir: CreateEffect
-		Explosion: small_building
-		ImpactSound: xplos.aud
+		Explosions: small_building
+		ImpactSounds: xplos.aud
 		ValidImpactTypes: Air, AirHit
 
 227mm:
@@ -201,8 +201,8 @@ MammothMissiles:
 	Warhead@2Smu: LeaveSmudge
 		SmudgeType: Crater
 	Warhead@3Eff: CreateEffect
-		Explosion: med_frag
-		ImpactSound: xplos.aud
+		Explosions: med_frag
+		ImpactSounds: xplos.aud
 
 227mm.stnk:
 	ReloadDelay: 70
@@ -219,7 +219,7 @@ MammothMissiles:
 		HorizontalRateOfTurn: 10
 		TrailImage: smokey
 		ContrailLength: 8
-		MaximumLaunchSpeed: 213
+		Speed: 213
 		RangeLimit: 40
 	Warhead@1Dam: SpreadDamage
 		Spread: 128
@@ -234,8 +234,8 @@ MammothMissiles:
 	Warhead@2Smu: LeaveSmudge
 		SmudgeType: Crater
 	Warhead@3Eff: CreateEffect
-		Explosion: small_frag
-		ImpactSound: xplos.aud
+		Explosions: small_frag
+		ImpactSounds: xplos.aud
 
 BoatMissile:
 	ReloadDelay: 35
@@ -251,7 +251,7 @@ BoatMissile:
 		HorizontalRateOfTurn: 10
 		TrailImage: smokey
 		ContrailLength: 8
-		MaximumLaunchSpeed: 170
+		Speed: 170
 		RangeLimit: 60
 	Warhead@1Dam: SpreadDamage
 		Spread: 256
@@ -265,12 +265,12 @@ BoatMissile:
 	Warhead@2Smu: LeaveSmudge
 		SmudgeType: Crater
 	Warhead@3Eff: CreateEffect
-		Explosion: small_poof
-		ImpactSound: xplos.aud
+		Explosions: small_poof
+		ImpactSounds: xplos.aud
 		InvalidImpactTypes: Air, AirHit
 	Warhead@4EffAir: CreateEffect
-		Explosion: small_building
-		ImpactSound: xplos.aud
+		Explosions: small_building
+		ImpactSounds: xplos.aud
 		ValidImpactTypes: Air, AirHit
 
 TowerMissle:
@@ -286,7 +286,7 @@ TowerMissle:
 		HorizontalRateOfTurn: 20
 		TrailImage: smokey
 		ContrailLength: 8
-		MaximumLaunchSpeed: 298
+		Speed: 298
 		RangeLimit: 40
 	Warhead@1Dam: SpreadDamage
 		Spread: 683
@@ -301,8 +301,8 @@ TowerMissle:
 	Warhead@2Smu: LeaveSmudge
 		SmudgeType: Crater
 	Warhead@3Eff: CreateEffect
-		Explosion: med_frag
-		ImpactSound: xplos.aud
+		Explosions: med_frag
+		ImpactSounds: xplos.aud
 
 SAMMissile:
 	ReloadDelay: 15
@@ -314,7 +314,7 @@ SAMMissile:
 		Blockable: false
 		Image: MISSILE
 		HorizontalRateOfTurn: 20
-		MaximumLaunchSpeed: 426
+		Speed: 426
 		RangeLimit: 35
 		TrailImage: smokey
 		ContrailLength: 8
@@ -326,13 +326,13 @@ SAMMissile:
 			Wood: 100
 			Light: 100
 			Heavy: 75
-		Damage: 30
+		Damage: 35
 		DamageTypes: Prone50Percent, TriggerProne, ExplosionDeath
 	Warhead@2Smu: LeaveSmudge
 		SmudgeType: Crater
 	Warhead@3Eff: CreateEffect
-		Explosion: small_building
-		ImpactSound: xplos.aud
+		Explosions: small_building
+		ImpactSounds: xplos.aud
 
 HonestJohn:
 	ReloadDelay: 200
@@ -360,8 +360,8 @@ HonestJohn:
 	Warhead@2Smu: LeaveSmudge
 		SmudgeType: Crater
 	Warhead@3Eff: CreateEffect
-		Explosion: small_poof
-		ImpactSound: xplos.aud
+		Explosions: small_poof
+		ImpactSounds: xplos.aud
 
 Patriot:
 	ReloadDelay: 25
@@ -375,7 +375,7 @@ Patriot:
 		TrailImage: smokey
 		ContrailLength: 8
 		HorizontalRateOfTurn: 20
-		MaximumLaunchSpeed: 300
+		Speed: 300
 		RangeLimit: 30
 	Warhead@1Dam: SpreadDamage
 		Spread: 682
@@ -387,5 +387,5 @@ Patriot:
 	Warhead@2Smu: LeaveSmudge
 		SmudgeType: Crater
 	Warhead@3Eff: CreateEffect
-		Explosion: poof
-		ImpactSound: xplos.aud
+		Explosions: poof
+		ImpactSounds: xplos.aud
